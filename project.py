@@ -9,9 +9,9 @@ class BaseCharacter:
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
         self.alive = 1
 
-    def move(self, delta_x, delta_y):
-        self.pos_x += delta_x
-        self.pos_y += delta_y
+    def set_position(self, x, y):
+        self.pos_x = x
+        self.pos_y = y
 
     def is_alive(self):
         if self.hp <= 0:
@@ -109,6 +109,7 @@ class Board:
         self.cell_size = cell_size
 
     def render(self, screen):
+        screen.fill((255, 255, 255))
         self.draw_rect(screen)
         for x in range(self.width):
             for y in range(self.height):
@@ -143,11 +144,31 @@ class Board:
         self.on_click(cell)
 
 
+class Game:
+    def __init__(self, board, hero):
+        self.board = board
+        self.hero = hero
+
+    def update_hero(self):
+        next_x, next_y = self.hero.get_cords()
+        if pygame.key.get_pressed()[pygame.K_LEFT]:
+            next_x -= 1
+        if pygame.key.get_pressed()[pygame.K_RIGHT]:
+            next_x += 1
+        if pygame.key.get_pressed()[pygame.K_UP]:
+            next_y -= 1
+        if pygame.key.get_pressed()[pygame.K_DOWN]:
+            next_y += 1
+        if self.board.board[next_y][next_x] != '1':
+            self.hero.set_position(next_x, next_y)
+
+
 def main():
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     screen.fill((255, 255, 255))
     board = Board(33, 18, 'map1.txt')
     hero = MainHero(10, 10, 50, 'chara')
+    game = Game(board, hero)
     board.set_view(100, 100, TILES_SIZE)
     running = True
     while running:
@@ -156,18 +177,9 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    hero.move(0, -1)
-                elif event.key == pygame.K_DOWN:
-                    hero.move(0, 1)
-                elif event.key == pygame.K_LEFT:
-                    hero.move(-1, 0)
-                elif event.key == pygame.K_RIGHT:
-                    hero.move(1, 0)
+            game.update_hero()
         board.render(screen)
         hero.render(screen)
-        print(str(hero))
         pygame.display.flip()
 
 
