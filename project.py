@@ -1,7 +1,19 @@
 import pygame
+import sys
+import os
 
 
 TILES_SIZE = 50
+
+
+def load_image(name, colorkey=None):
+    fullname = name
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    return image
 
 
 class BaseCharacter:
@@ -44,9 +56,19 @@ class BaseEnemy(BaseCharacter):
         print(f'Враг на позиции ({self.pos_x}, {self.pos_y}) с оружием {self.weapon.name()}')
 
 
-class MainHero(BaseCharacter):
+class MainHero(BaseCharacter, pygame.sprite.Sprite):
+    image = load_image("data\\MH_stay.png")
+
     def __init__(self, pos_x, pos_y, hp, name):
-        super().__init__(pos_x, pos_y, hp)
+        BaseCharacter.__init__(pos_x, pos_y, hp)
+        pygame.sprite.Sprite.__init__(all_sprites)
+
+        self.image = MainHero.image
+        self.rect = self.image.get_rect()
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect.x = pos_x
+        self.rect.y = pos_y
+
         self.name = name
         self.weapon = None
         self.Wlist = []
@@ -83,6 +105,20 @@ class Weapon:
 
     def hit(self, target):
         target.get_damage(self.damage)
+
+
+class Border(pygame.sprite.Sprite):
+    # строго вертикальный или строго горизонтальный отрезок
+    def __init__(self, x1, y1, x2, y2):
+        super().__init__(all_sprites)
+        if x1 == x2:  # вертикальная стенка
+            self.add(borders)
+            self.image = pygame.Surface([1, y2 - y1])
+            self.rect = pygame.Rect(x1, y1, 1, y2 - y1)
+        else:  # горизонтальная стенка
+            self.add(borders)
+            self.image = pygame.Surface([x2 - x1, 1])
+            self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
 
 
 class Board:
@@ -159,18 +195,27 @@ class Game:
             next_y -= 1
         if pygame.key.get_pressed()[pygame.K_DOWN]:
             next_y += 1
-        if self.board.board[next_y][next_x] != '1':
-            self.hero.set_position(next_x, next_y)
+        self.hero.set_position(next_x, next_y)
+
+
+all_sprites = pygame.sprite.Group()
+borders = pygame.sprite.Group()
 
 
 def main():
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     screen.fill((255, 255, 255))
     board = Board(33, 18, 'map1.txt')
+    board.set_view(100, 100, TILES_SIZE)
     hero = MainHero(10, 10, 50, 'chara')
     game = Game(board, hero)
-    board.set_view(100, 100, TILES_SIZE)
+    Border(board.left, board.top, board.left, TILES_SIZE * board.height)
+    Border(board.left, board.top, TILES_SIZE * board.width, board.top)
+    #Border(board.left, board.top, board.left, TILES_SIZE * board.height)
+    #Border(board.left, board.top, board.left, TILES_SIZE * board.height)
+
     running = True
+    clock = pygame.time.Clock()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -178,9 +223,13 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
             game.update_hero()
+
         board.render(screen)
         hero.render(screen)
+        all_sprites.draw(screen)
+        all_sprites.update()
         pygame.display.flip()
+        clock.tick(60)
 
 
 if __name__ == '__main__':
