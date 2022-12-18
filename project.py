@@ -121,14 +121,18 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
     def image_change(self):
         if self.orientation == 1:
             im = load_image('data\\MH_go.png')
+            return pygame.transform.scale(im, (100, 180))
         elif self.orientation == 3:
             im = load_image('data\\MH_go.png')
             im = pygame.transform.flip(im, flip_x=True, flip_y=False)
+            return pygame.transform.scale(im, (100, 180))
         elif self.orientation == 0:
             im = load_image(f'data\\MH_go{0}.png')
+            return pygame.transform.scale(im, (70, 180))
         elif self.orientation == 2:
             im = load_image(f'data\\MH_go{2}.png')
-        return pygame.transform.scale(im, (70, 180))
+            return pygame.transform.scale(im, (70, 180))
+
 
 
 class Weapon:
