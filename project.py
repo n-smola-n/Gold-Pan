@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+from screeninfo import get_monitors
 
 TILES_SIZE = 50
 
@@ -280,18 +281,19 @@ borders = pygame.sprite.Group()
 
 
 def main():
+    get_monitors()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     board = Board(33, 18, 'map1.txt')
     board.set_view(100, 100, TILES_SIZE)
     hero = MainHero(300, 300, 50, 'chara')
     all_sprites.add(hero)
     game = Game(board, hero)
-    Border(board.left, board.top,
-           board.left, TILES_SIZE * board.height + board.top)
-    Border(board.left, board.top,
-           TILES_SIZE * board.width + board.left, board.top)
-    Border(board.left + TILES_SIZE * board.width, board.top,
-           board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top)
+    Border(board.left, board.top + hero.rect.height,
+           board.left, TILES_SIZE * board.height + board.top - hero.rect.height)
+    Border(board.left, board.top + hero.rect.height,
+           TILES_SIZE * board.width + board.left, board.top - hero.rect.height)
+    Border(board.left + TILES_SIZE * board.width, board.top - hero.rect.height,
+           board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top - hero.rect.height)
     Border(board.left, board.top + TILES_SIZE * board.height,
            board.left + TILES_SIZE * board.width, board.top)
 
