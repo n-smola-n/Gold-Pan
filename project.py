@@ -122,17 +122,17 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
     def image_change(self):
         if self.orientation == 1:
             im = load_image('data\\MH_go.png')
-            return pygame.transform.scale(im, (100, 180))
+            return pygame.transform.scale(im, (80, 160))
         elif self.orientation == 3:
             im = load_image('data\\MH_go.png')
             im = pygame.transform.flip(im, flip_x=True, flip_y=False)
-            return pygame.transform.scale(im, (100, 180))
+            return pygame.transform.scale(im, (80, 160))
         elif self.orientation == 0:
             im = load_image(f'data\\MH_go{0}.png')
-            return pygame.transform.scale(im, (70, 180))
+            return pygame.transform.scale(im, (60, 160))
         elif self.orientation == 2:
             im = load_image(f'data\\MH_go{2}.png')
-            return pygame.transform.scale(im, (70, 180))
+            return pygame.transform.scale(im, (60, 160))
 
 
 
@@ -279,21 +279,22 @@ class Game:
 all_sprites = pygame.sprite.Group()
 borders = pygame.sprite.Group()
 
+def monitor1():
 
 def main():
     get_monitors()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-    board = Board(33, 18, 'map1.txt')
-    board.set_view(100, 100, TILES_SIZE)
-    hero = MainHero(300, 300, 50, 'chara')
+    board = Board(33, 17, 'map1.txt')
+    board.set_view(100, 140, TILES_SIZE)
+    hero = MainHero(300, 300, 40, 'chara')
     all_sprites.add(hero)
     game = Game(board, hero)
-    Border(board.left, board.top + hero.rect.height,
-           board.left, TILES_SIZE * board.height + board.top - hero.rect.height)
-    Border(board.left, board.top + hero.rect.height,
+    Border(board.left, board.top - hero.rect.height,
+           board.left, TILES_SIZE * board.height + board.top)
+    Border(board.left, board.top - hero.rect.height,
            TILES_SIZE * board.width + board.left, board.top - hero.rect.height)
-    Border(board.left + TILES_SIZE * board.width, board.top - hero.rect.height,
-           board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top - hero.rect.height)
+    Border(board.left + TILES_SIZE * board.width, board.top,
+           board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top)
     Border(board.left, board.top + TILES_SIZE * board.height,
            board.left + TILES_SIZE * board.width, board.top)
 
