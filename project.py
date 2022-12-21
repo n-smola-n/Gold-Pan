@@ -8,6 +8,16 @@ from pygame_widgets.textbox import TextBox
 FPS = 20
 TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
+TOP, LEFT = 100, 100
+
+TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png', '3': 'data\\chest1.png'}
+
+all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+borders = pygame.sprite.Group()
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+clock = pygame.time.Clock()
+name = None
 
 
 def load_image(name, colorkey=None):
@@ -17,6 +27,14 @@ def load_image(name, colorkey=None):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
     image = pygame.image.load(fullname)
+
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
     return image
 
 
@@ -162,12 +180,24 @@ class Armor:
         pass
 
 
-class Chest:
-    def __init__(self, *stuff):
+class Chest(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, *stuff):
+        super().__init__(all_sprites)
         self.stuff = list(stuff)
+        image = load_image(TILE_IMAGES['3'])
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
-    def render(self):
-        pass
+
+class Stair(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, next_room):
+        super().__init__(tiles_group, all_sprites)
+        self.next_room = next_room
+        image = load_image(TILE_IMAGES['2'])
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
 class Border(pygame.sprite.Sprite):
@@ -191,23 +221,22 @@ class Board:
     def __init__(self, width, height, filename):
         self.width = width
         self.height = height
-        self.object_map = [[None] * width for _ in range(height)]
+        self.object_map = self.load_level(filename)
         self.board = []
-        with open(filename) as f:
-            for i in f:
-                self.board.append(list(i.split()[0]))
 
         # значения по умолчанию
         self.left = 0
         self.top = 0
         self.cell_size = 20
-        self.colors = {'0': (0, 0, 0), '1': (255, 255, 255), '2': (0, 255, 0), '3': (200, 200, 0)}
+        self.colors = {'0': (0, 0, 0), '1': (255, 255, 255), '2': (255, 255, 0), '3': (100, 100, 100)}
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):
         self.left = left
         self.top = top
         self.cell_size = cell_size
+
+    '''
 
     def render(self, screen):
         screen.fill((255, 255, 255))
@@ -224,6 +253,7 @@ class Board:
                 pygame.draw.rect(screen, self.colors[self.board[y][x]],
                                  (self.left + x * self.cell_size, self.top + y * self.cell_size,
                                   self.cell_size, self.cell_size))
+    '''
 
     def get_cell(self, mouse_pos):
         if self.left < mouse_pos[0] < self.cell_size * self.width + self.left and \
@@ -237,12 +267,39 @@ class Board:
                         return x, y
         return None
 
+    def load_level(self, filename):
+        filename = filename
+        with open(filename, 'r') as mapFile:
+            level_map = [line.strip() for line in mapFile]
+        return level_map
+
+    def render(self, level):
+        for y in range(len(level)):
+            for x in range(len(level[y])):
+                if level[y][x] == '0':
+                    Tile('0', x, y)
+                elif level[y][x] == '1':
+                    Tile('1', x, y)
+                elif level[y][x] == '2':
+                    Stair(x, y, 'название след. карты')
+                elif level[y][x] == '3':
+                    Chest(x, y, [])
+
     def on_click(self, cell_coords):
         print(cell_coords)
 
     def get_click(self, mouse_pos):
         cell = self.get_cell(mouse_pos)
         self.on_click(cell)
+
+
+class Tile(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+        image = load_image(TILE_IMAGES[tile_type], colorkey=-1)
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
 class Game:
@@ -277,13 +334,6 @@ class Game:
             next_y += 10
             self.k = 2
         self.hero.set_position(next_x, next_y, self.k)
-
-
-all_sprites = pygame.sprite.Group()
-borders = pygame.sprite.Group()
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-clock = pygame.time.Clock()
-name = None
 
 
 def terminate():
@@ -402,9 +452,12 @@ def start_screen():
 
 def main():
     start_screen()
+    screen.fill((0, 0, 0))
     hero = MainHero(300, 300, 50, name)
     board = Board(33, 18, 'map1.txt')
-    board.set_view(100, 100, TILES_SIZE)
+
+    board.set_view(TOP, LEFT, TILES_SIZE)
+    board.render(board.object_map)
     all_sprites.add(hero)
     game = Game(board, hero)
     Border(board.left, board.top,
@@ -427,9 +480,6 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
         game.update_hero()
-
-        board.render(screen)
-
         all_sprites.update()
         all_sprites.draw(screen)
 
