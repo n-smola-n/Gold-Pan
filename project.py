@@ -1,8 +1,13 @@
 import pygame
 import sys
 import os
+import pygame_widgets
+from pygame_widgets.button import Button
+from pygame_widgets.textbox import TextBox
 
+FPS = 20
 TILES_SIZE = 50
+WIDTH, HEIGHT = 500, 500
 
 
 def load_image(name, colorkey=None):
@@ -132,7 +137,6 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         elif self.orientation == 2:
             im = load_image(f'data\\MH_go{2}.png')
             return pygame.transform.scale(im, (70, 180))
-
 
 
 class Weapon:
@@ -277,13 +281,130 @@ class Game:
 
 all_sprites = pygame.sprite.Group()
 borders = pygame.sprite.Group()
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+clock = pygame.time.Clock()
+name = None
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def action_new_game():
+    global name
+    #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
+    screen.fill((0, 0, 0))
+    textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
+                      borderColour=(255, 0, 0), textColour=(0, 200, 0),
+                      radius=10, borderThickness=5)
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                name = textbox.getText()
+                return 1
+
+        screen.fill((255, 255, 255))
+        pygame.display.update()
+
+
+def action_load_button():
+    pass
+
+
+def action_options():
+    pass
+
+
+def start_screen():
+    intro_text = ["Gold Pan", "",
+                  "Правила игры",
+                  "Если в правилах несколько строк,",
+                  "приходится выводить их построчно"]
+
+    fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
+    new_game_button = Button(screen, 150, 400, 350, 100,
+                             text='Новая игра',  # Text to display
+                             fontSize=50,  # Size of font
+                             margin=0,
+                             inactiveColour=(0, 100, 255),
+                             hoverColour=(255, 100, 30),
+                             pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                             radius=50,  # Radius of border corners (leave empty for not curved)
+                             onClick=action_new_game)
+
+    load_button = Button(screen, 150, 550, 350, 100,
+                         text='Загрузить игру',  # Text to display
+                         fontSize=50,  # Size of font
+                         margin=0,
+                         inactiveColour=(0, 100, 255),
+                         hoverColour=(255, 100, 30),
+                         pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
+                         radius=50,  # Radius of border corners (leave empty for not curved)
+                         onClick=action_load_button
+                         )
+
+    options_button = Button(screen, 150, 700, 350, 100,
+                            text='Опции',  # Text to display
+                            fontSize=50,  # Size of font
+                            margin=0,
+                            inactiveColour=(0, 100, 255),
+                            hoverColour=(255, 100, 30),
+                            pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                            radius=50,  # Radius of border corners (leave empty for not curved)
+                            onClick=action_options
+                            )
+
+    exit_button = Button(screen, 150, 850, 350, 100,
+                         text='Выход из игры',  # Text to display
+                         fontSize=50,  # Size of font
+                         margin=0,
+                         inactiveColour=(0, 100, 255),
+                         hoverColour=(255, 100, 30),
+                         pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                         radius=50,  # Radius of border corners (leave empty for not curved)
+                         onClick=terminate
+                         )
+
+    button_group = [new_game_button, load_button, options_button, exit_button]
+
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            for i in button_group:
+                if i.onClick == 1:
+                    return
+                i.listen(event)
+                i.draw()
+            pygame_widgets.update(event)
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 def main():
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    start_screen()
+    hero = MainHero(300, 300, 50, name)
     board = Board(33, 18, 'map1.txt')
     board.set_view(100, 100, TILES_SIZE)
-    hero = MainHero(300, 300, 50, 'chara')
     all_sprites.add(hero)
     game = Game(board, hero)
     Border(board.left, board.top,
@@ -296,12 +417,13 @@ def main():
            board.left + TILES_SIZE * board.width, board.top)
 
     running = True
-    clock = pygame.time.Clock()
     i = 0
     while running:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                start_screen()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
         game.update_hero()
