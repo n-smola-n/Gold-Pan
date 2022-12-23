@@ -1,9 +1,24 @@
 import pygame
 import sys
 import os
+import pygame_widgets
+from pygame_widgets.button import Button
+from pygame_widgets.textbox import TextBox
 from screeninfo import get_monitors
 
+FPS = 20
 TILES_SIZE = 50
+WIDTH, HEIGHT = 500, 500
+TOP, LEFT = 100, 100
+
+TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png', '3': 'data\\chest1.png'}
+
+all_sprites = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+borders = pygame.sprite.Group()
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+clock = pygame.time.Clock()
+name = None
 
 
 def load_image(name, colorkey=None):
@@ -13,6 +28,14 @@ def load_image(name, colorkey=None):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
     image = pygame.image.load(fullname)
+
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
     return image
 
 
@@ -135,7 +158,6 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             return pygame.transform.scale(im, (60, 160))
 
 
-
 class Weapon:
     def __init__(self, name, damage):
         self.name, self.damage = name, damage
@@ -159,12 +181,24 @@ class Armor:
         pass
 
 
-class Chest:
-    def __init__(self, *stuff):
+class Chest(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, *stuff):
+        super().__init__(all_sprites)
         self.stuff = list(stuff)
+        image = load_image(TILE_IMAGES['3'])
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
-    def render(self):
-        pass
+
+class Stair(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, next_room):
+        super().__init__(tiles_group, all_sprites)
+        self.next_room = next_room
+        image = load_image(TILE_IMAGES['2'])
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
 class Border(pygame.sprite.Sprite):
@@ -188,23 +222,22 @@ class Board:
     def __init__(self, width, height, filename):
         self.width = width
         self.height = height
-        self.object_map = [[None] * width for _ in range(height)]
+        self.object_map = self.load_level(filename)
         self.board = []
-        with open(filename) as f:
-            for i in f:
-                self.board.append(list(i.split()[0]))
 
         # значения по умолчанию
         self.left = 0
         self.top = 0
         self.cell_size = 20
-        self.colors = {'0': (0, 0, 0), '1': (255, 255, 255), '2': (0, 255, 0), '3': (200, 200, 0)}
+        self.colors = {'0': (0, 0, 0), '1': (255, 255, 255), '2': (255, 255, 0), '3': (100, 100, 100)}
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):
         self.left = left
         self.top = top
         self.cell_size = cell_size
+
+    '''
 
     def render(self, screen):
         screen.fill((255, 255, 255))
@@ -221,6 +254,7 @@ class Board:
                 pygame.draw.rect(screen, self.colors[self.board[y][x]],
                                  (self.left + x * self.cell_size, self.top + y * self.cell_size,
                                   self.cell_size, self.cell_size))
+    '''
 
     def get_cell(self, mouse_pos):
         if self.left < mouse_pos[0] < self.cell_size * self.width + self.left and \
@@ -234,12 +268,39 @@ class Board:
                         return x, y
         return None
 
+    def load_level(self, filename):
+        filename = filename
+        with open(filename, 'r') as mapFile:
+            level_map = [line.strip() for line in mapFile]
+        return level_map
+
+    def render(self, level):
+        for y in range(len(level)):
+            for x in range(len(level[y])):
+                if level[y][x] == '0':
+                    Tile('0', x, y)
+                elif level[y][x] == '1':
+                    Tile('1', x, y)
+                elif level[y][x] == '2':
+                    Stair(x, y, 'название след. карты')
+                elif level[y][x] == '3':
+                    Chest(x, y, [])
+
     def on_click(self, cell_coords):
         print(cell_coords)
 
     def get_click(self, mouse_pos):
         cell = self.get_cell(mouse_pos)
         self.on_click(cell)
+
+
+class Tile(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(tiles_group, all_sprites)
+        image = load_image(TILE_IMAGES[tile_type], colorkey=-1)
+        self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
+        self.rect = self.image.get_rect().move(
+            TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
 class Game:
@@ -276,12 +337,129 @@ class Game:
         self.hero.set_position(next_x, next_y, self.k)
 
 
-all_sprites = pygame.sprite.Group()
-borders = pygame.sprite.Group()
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def action_new_game():
+    global name
+    #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
+    screen.fill((0, 0, 0))
+    textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
+                      borderColour=(255, 0, 0), textColour=(0, 200, 0),
+                      radius=10, borderThickness=5)
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                name = textbox.getText()
+                return 1
+
+        screen.fill((255, 255, 255))
+        pygame.display.update()
+
+
+def action_load_button():
+    pass
+
+
+def action_options():
+    pass
+
+
+def start_screen():
+    intro_text = ["Gold Pan", "",
+                  "Правила игры",
+                  "Если в правилах несколько строк,",
+                  "приходится выводить их построчно"]
+
+    fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
+    new_game_button = Button(screen, 150, 400, 350, 100,
+                             text='Новая игра',  # Text to display
+                             fontSize=50,  # Size of font
+                             margin=0,
+                             inactiveColour=(0, 100, 255),
+                             hoverColour=(255, 100, 30),
+                             pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                             radius=50,  # Radius of border corners (leave empty for not curved)
+                             onClick=action_new_game)
+
+    load_button = Button(screen, 150, 550, 350, 100,
+                         text='Загрузить игру',  # Text to display
+                         fontSize=50,  # Size of font
+                         margin=0,
+                         inactiveColour=(0, 100, 255),
+                         hoverColour=(255, 100, 30),
+                         pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
+                         radius=50,  # Radius of border corners (leave empty for not curved)
+                         onClick=action_load_button
+                         )
+
+    options_button = Button(screen, 150, 700, 350, 100,
+                            text='Опции',  # Text to display
+                            fontSize=50,  # Size of font
+                            margin=0,
+                            inactiveColour=(0, 100, 255),
+                            hoverColour=(255, 100, 30),
+                            pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                            radius=50,  # Radius of border corners (leave empty for not curved)
+                            onClick=action_options
+                            )
+
+    exit_button = Button(screen, 150, 850, 350, 100,
+                         text='Выход из игры',  # Text to display
+                         fontSize=50,  # Size of font
+                         margin=0,
+                         inactiveColour=(0, 100, 255),
+                         hoverColour=(255, 100, 30),
+                         pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                         radius=50,  # Radius of border corners (leave empty for not curved)
+                         onClick=terminate
+                         )
+
+    button_group = [new_game_button, load_button, options_button, exit_button]
+
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            for i in button_group:
+                if i.onClick == 1:
+                    return
+                i.listen(event)
+                i.draw()
+            pygame_widgets.update(event)
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
 
 def monitor1():
 
 def main():
+    start_screen()
+    screen.fill((0, 0, 0))
+    hero = MainHero(300, 300, 50, name)
+    board = Board(33, 18, 'map1.txt')
+
+    board.set_view(TOP, LEFT, TILES_SIZE)
+    board.render(board.object_map)
     get_monitors()
     screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     board = Board(33, 17, 'map1.txt')
@@ -299,18 +477,16 @@ def main():
            board.left + TILES_SIZE * board.width, board.top)
 
     running = True
-    clock = pygame.time.Clock()
     i = 0
     while running:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                start_screen()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
         game.update_hero()
-
-        board.render(screen)
-
         all_sprites.update()
         all_sprites.draw(screen)
 
