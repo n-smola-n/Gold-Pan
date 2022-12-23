@@ -10,6 +10,7 @@ FPS = 20
 TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
+get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png', '3': 'data\\chest1.png'}
 
@@ -64,16 +65,16 @@ class BaseCharacter:
 
 
 class BaseEnemy(BaseCharacter):
-    def __init__(self, pos_x, pos_y, weapon, hp):
-        super().__init__(pos_x, pos_y, hp)
-        self.weapon = weapon
+    def __init__(self, pos_x, pos_y, name, hp, damage):
+        super().__init__(hp)
+        self.name = name
+        self.damage = damage
 
     def hit(self, target):
-        self.weapon.hit(self, target)
+        target.get_damage(self.damage)
 
-    def __str__(self):
-        print(f'Враг на позиции ({self.pos_x}, {self.pos_y}) с оружием {self.weapon.name()}')
-
+    def get_info(self):
+        return [f'Имя врага: {self.name}', f'Здоровье врага: {self.hp}', f'Сила удара: {self.damage}']
 
 class MainHero(BaseCharacter, pygame.sprite.Sprite):
     image = load_image("data\\MH_stay.png")
@@ -222,8 +223,8 @@ class Board:
     def __init__(self, width, height, filename):
         self.width = width
         self.height = height
-        self.object_map = self.load_level(filename)
-        self.board = []
+        self.board = self.load_level(filename)
+        self.object_map = {}
 
         # значения по умолчанию
         self.left = 0
@@ -236,24 +237,6 @@ class Board:
         self.left = left
         self.top = top
         self.cell_size = cell_size
-
-    '''
-
-    def render(self, screen):
-        screen.fill((255, 255, 255))
-        self.draw_rect(screen)
-        for x in range(self.width):
-            for y in range(self.height):
-                pygame.draw.rect(screen, (30, 30, 30),
-                                 (self.left + x * self.cell_size, self.top + y * self.cell_size,
-                                  self.cell_size, self.cell_size), 1)
-
-    def draw_rect(self, screen):
-        for y in range(len(self.board)):
-            for x in range(len(self.board[y])):
-                pygame.draw.rect(screen, self.colors[self.board[y][x]],
-                                 (self.left + x * self.cell_size, self.top + y * self.cell_size,
-                                  self.cell_size, self.cell_size))
     '''
 
     def get_cell(self, mouse_pos):
@@ -267,7 +250,7 @@ class Board:
                             yf < mouse_pos[1] < self.cell_size + yf:
                         return x, y
         return None
-
+'''
     def load_level(self, filename):
         filename = filename
         with open(filename, 'r') as mapFile:
@@ -311,16 +294,6 @@ class Game:
 
     def update_hero(self):
         next_x, next_y = self.hero.get_cords()
-        '''
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            next_x -= 10
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            next_x += 10
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            next_y -= 10
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            next_y += 10
-            '''
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
             next_x -= 10
@@ -335,6 +308,10 @@ class Game:
             next_y += 10
             self.k = 2
         self.hero.set_position(next_x, next_y, self.k)
+
+
+class Fight:
+    pass
 
 
 def terminate():
@@ -450,21 +427,17 @@ def start_screen():
         pygame.display.flip()
         clock.tick(FPS)
 
-def monitor1():
 
 def main():
+
     start_screen()
-    screen.fill((0, 0, 0))
     hero = MainHero(300, 300, 50, name)
-    board = Board(33, 18, 'map1.txt')
+    board = Board(33, 17, 'map1.txt')
 
     board.set_view(TOP, LEFT, TILES_SIZE)
-    board.render(board.object_map)
-    get_monitors()
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-    board = Board(33, 17, 'map1.txt')
-    board.set_view(100, 140, TILES_SIZE)
-    hero = MainHero(300, 300, 40, 'chara')
+    board.render(board.board)
+
+    screen.fill((0, 0, 0))
     all_sprites.add(hero)
     game = Game(board, hero)
     Border(board.left, board.top - hero.rect.height,
@@ -478,6 +451,7 @@ def main():
 
     running = True
     i = 0
+    fight = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -486,6 +460,10 @@ def main():
                 start_screen()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
+            if fight:
+                pass
+
+        screen.fill((0, 0, 0))
         game.update_hero()
         all_sprites.update()
         all_sprites.draw(screen)
