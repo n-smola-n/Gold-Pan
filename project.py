@@ -76,6 +76,7 @@ class BaseEnemy(BaseCharacter):
     def get_info(self):
         return [f'Имя врага: {self.name}', f'Здоровье врага: {self.hp}', f'Сила удара: {self.damage}']
 
+
 class MainHero(BaseCharacter, pygame.sprite.Sprite):
     image = load_image("data\\MH_stay.png")
 
@@ -89,7 +90,8 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
         self.rect.x = pos_x
-        self.rect.y = pos_y
+        self.rect.y = pos_y - 20
+        self.rect.height -= 20
 
         self.name = name
         self.bread = 0
@@ -440,9 +442,9 @@ def main():
     screen.fill((0, 0, 0))
     all_sprites.add(hero)
     game = Game(board, hero)
-    Border(board.left, board.top - hero.rect.height,
+    Border(board.left, board.top,
            board.left, TILES_SIZE * board.height + board.top)
-    Border(board.left, board.top - hero.rect.height,
+    Border(board.left, board.top,
            TILES_SIZE * board.width + board.left, board.top - hero.rect.height)
     Border(board.left + TILES_SIZE * board.width, board.top,
            board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top)
