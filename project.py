@@ -290,6 +290,7 @@ class Tile(pygame.sprite.Sprite):
 
 class Game:
     def __init__(self, board, hero):
+        self.running = None
         self.board = board
         self.hero = hero
         self.k = 1
@@ -311,25 +312,25 @@ class Game:
             self.k = 2
         self.hero.set_position(next_x, next_y, self.k)
 
-    def new_game(self):
-        self.action_new_game()
-
     def action_new_game(self):
+        self.running = False
         #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
         screen.fill((0, 0, 0))
         textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
                           borderColour=(255, 0, 0), textColour=(0, 200, 0),
                           radius=10, borderThickness=5)
-        run = True
-        while run:
-            for event in pygame.event.get():
+        while True:
+            events = pygame.event.get()
+            for event in events:
                 if event.type == pygame.QUIT:
                     terminate()
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                    name = textbox.getText()
-                    return name
+                    self.hero.name = textbox.getText()
+                    return
+            screen.fill((0, 0, 0))
 
-            screen.fill((255, 255, 255))
+            textbox.listen(events)
+            textbox.draw()
             pygame.display.update()
 
     def action_load_button(self):
@@ -353,7 +354,7 @@ class Game:
                                  hoverColour=(255, 100, 30),
                                  pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
                                  radius=50,  # Radius of border corners (leave empty for not curved)
-                                 onClick=self.action_new_game)
+                                 onClick=lambda: self.action_new_game())
 
         load_button = Button(screen, 150, 550, 350, 100,
                              text='Загрузить игру',  # Text to display
@@ -363,7 +364,7 @@ class Game:
                              hoverColour=(255, 100, 30),
                              pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
                              radius=50,  # Radius of border corners (leave empty for not curved)
-                             onClick=self.action_load_button
+                             onClick=lambda: terminate
                              )
 
         options_button = Button(screen, 150, 700, 350, 100,
@@ -374,7 +375,7 @@ class Game:
                                 hoverColour=(255, 100, 30),
                                 pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
                                 radius=50,  # Radius of border corners (leave empty for not curved)
-                                onClick=self.action_options
+                                onClick=lambda: terminate
                                 )
 
         exit_button = Button(screen, 150, 850, 350, 100,
@@ -402,13 +403,13 @@ class Game:
             text_coord += intro_rect.height
             screen.blit(string_rendered, intro_rect)
 
-        while True:
+        self.running = True
+        while self.running:
             for event in pygame.event.get():
                 for i in button_group:
-                    if i.onClick == 1:
-                        return
-                    i.listen(event)
                     i.draw()
+                    i.listen(event)
+
                 pygame_widgets.update(event)
                 if event.type == pygame.QUIT:
                     terminate()
@@ -429,16 +430,16 @@ def terminate():
 
 
 def main():
-
+    screen.fill((0, 0, 0))
     hero = MainHero(300, 300, 50, name)
-    board = Board(33, 17, 'map2.txt')
+    board = Board(33, 17, 'map1.txt')
+
+    game = Game(board, hero)
+    Game.start_screen(game)
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
-
-    screen.fill((0, 0, 0))
     all_sprites.add(hero)
-    game = Game(board, hero)
-    Game.start_screen
+
     Border(board.left, board.top,
            board.left, TILES_SIZE * board.height + board.top)
     Border(board.left, board.top,
@@ -456,7 +457,7 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                Game.start_screen
+                game.start_screen()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
             if fight:
@@ -464,8 +465,9 @@ def main():
 
         screen.fill((0, 0, 0))
         game.update_hero()
-        all_sprites.update()
+
         all_sprites.draw(screen)
+        all_sprites.update()
 
         pygame.display.flip()
         clock.tick(20)
