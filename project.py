@@ -22,8 +22,8 @@ clock = pygame.time.Clock()
 name = None
 
 
-def load_image(name, colorkey=None):
-    fullname = name
+def load_image(fname, colorkey=None):
+    fullname = fname
     # если файл не существует, то выходим
     if not os.path.isfile(fullname):
         print(f"Файл с изображением '{fullname}' не найден")
@@ -311,6 +311,113 @@ class Game:
             self.k = 2
         self.hero.set_position(next_x, next_y, self.k)
 
+    def new_game(self):
+        self.action_new_game()
+
+    def action_new_game(self):
+        #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
+        screen.fill((0, 0, 0))
+        textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
+                          borderColour=(255, 0, 0), textColour=(0, 200, 0),
+                          radius=10, borderThickness=5)
+        run = True
+        while run:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    terminate()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    name = textbox.getText()
+                    return name
+
+            screen.fill((255, 255, 255))
+            pygame.display.update()
+
+    def action_load_button(self):
+        pass
+
+    def action_options(self):
+        pass
+
+    def start_screen(self):
+        intro_text = ["Gold Pan", "",
+                      "Правила игры",
+                      "Если в правилах несколько строк,",
+                      "приходится выводить их построчно"]
+
+        fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
+        new_game_button = Button(screen, 150, 400, 350, 100,
+                                 text='Новая игра',  # Text to display
+                                 fontSize=50,  # Size of font
+                                 margin=0,
+                                 inactiveColour=(0, 100, 255),
+                                 hoverColour=(255, 100, 30),
+                                 pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                                 radius=50,  # Radius of border corners (leave empty for not curved)
+                                 onClick=self.action_new_game)
+
+        load_button = Button(screen, 150, 550, 350, 100,
+                             text='Загрузить игру',  # Text to display
+                             fontSize=50,  # Size of font
+                             margin=0,
+                             inactiveColour=(0, 100, 255),
+                             hoverColour=(255, 100, 30),
+                             pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
+                             radius=50,  # Radius of border corners (leave empty for not curved)
+                             onClick=self.action_load_button
+                             )
+
+        options_button = Button(screen, 150, 700, 350, 100,
+                                text='Опции',  # Text to display
+                                fontSize=50,  # Size of font
+                                margin=0,
+                                inactiveColour=(0, 100, 255),
+                                hoverColour=(255, 100, 30),
+                                pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                                radius=50,  # Radius of border corners (leave empty for not curved)
+                                onClick=self.action_options
+                                )
+
+        exit_button = Button(screen, 150, 850, 350, 100,
+                             text='Выход из игры',  # Text to display
+                             fontSize=50,  # Size of font
+                             margin=0,
+                             inactiveColour=(0, 100, 255),
+                             hoverColour=(255, 100, 30),
+                             pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
+                             radius=50,  # Radius of border corners (leave empty for not curved)
+                             onClick=terminate
+                             )
+
+        button_group = [new_game_button, load_button, options_button, exit_button]
+
+        screen.blit(fon, (0, 0))
+        font = pygame.font.Font(None, 30)
+        text_coord = 50
+        for line in intro_text:
+            string_rendered = font.render(line, 1, pygame.Color('white'))
+            intro_rect = string_rendered.get_rect()
+            text_coord += 10
+            intro_rect.top = text_coord
+            intro_rect.x = 10
+            text_coord += intro_rect.height
+            screen.blit(string_rendered, intro_rect)
+
+        while True:
+            for event in pygame.event.get():
+                for i in button_group:
+                    if i.onClick == 1:
+                        return
+                    i.listen(event)
+                    i.draw()
+                pygame_widgets.update(event)
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.KEYDOWN or \
+                        event.type == pygame.MOUSEBUTTONDOWN:
+                    return
+            pygame.display.flip()
+            clock.tick(FPS)
+
 
 class Fight:
     pass
@@ -321,127 +428,17 @@ def terminate():
     sys.exit()
 
 
-def action_new_game():
-    global name
-    #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
-    screen.fill((0, 0, 0))
-    textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
-                      borderColour=(255, 0, 0), textColour=(0, 200, 0),
-                      radius=10, borderThickness=5)
-    run = True
-    while run:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                name = textbox.getText()
-                return 1
-
-        screen.fill((255, 255, 255))
-        pygame.display.update()
-
-
-def action_load_button():
-    pass
-
-
-def action_options():
-    pass
-
-
-def start_screen():
-    intro_text = ["Gold Pan", "",
-                  "Правила игры",
-                  "Если в правилах несколько строк,",
-                  "приходится выводить их построчно"]
-
-    fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
-    new_game_button = Button(screen, 150, 400, 350, 100,
-                             text='Новая игра',  # Text to display
-                             fontSize=50,  # Size of font
-                             margin=0,
-                             inactiveColour=(0, 100, 255),
-                             hoverColour=(255, 100, 30),
-                             pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
-                             radius=50,  # Radius of border corners (leave empty for not curved)
-                             onClick=action_new_game)
-
-    load_button = Button(screen, 150, 550, 350, 100,
-                         text='Загрузить игру',  # Text to display
-                         fontSize=50,  # Size of font
-                         margin=0,
-                         inactiveColour=(0, 100, 255),
-                         hoverColour=(255, 100, 30),
-                         pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
-                         radius=50,  # Radius of border corners (leave empty for not curved)
-                         onClick=action_load_button
-                         )
-
-    options_button = Button(screen, 150, 700, 350, 100,
-                            text='Опции',  # Text to display
-                            fontSize=50,  # Size of font
-                            margin=0,
-                            inactiveColour=(0, 100, 255),
-                            hoverColour=(255, 100, 30),
-                            pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
-                            radius=50,  # Radius of border corners (leave empty for not curved)
-                            onClick=action_options
-                            )
-
-    exit_button = Button(screen, 150, 850, 350, 100,
-                         text='Выход из игры',  # Text to display
-                         fontSize=50,  # Size of font
-                         margin=0,
-                         inactiveColour=(0, 100, 255),
-                         hoverColour=(255, 100, 30),
-                         pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
-                         radius=50,  # Radius of border corners (leave empty for not curved)
-                         onClick=terminate
-                         )
-
-    button_group = [new_game_button, load_button, options_button, exit_button]
-
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('white'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
-
-    while True:
-        for event in pygame.event.get():
-            for i in button_group:
-                if i.onClick == 1:
-                    return
-                i.listen(event)
-                i.draw()
-            pygame_widgets.update(event)
-            if event.type == pygame.QUIT:
-                terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                return
-        pygame.display.flip()
-        clock.tick(FPS)
-
-
 def main():
 
-    start_screen()
     hero = MainHero(300, 300, 50, name)
-    board = Board(33, 17, 'map1.txt')
-
+    board = Board(33, 17, 'map2.txt')
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
 
     screen.fill((0, 0, 0))
     all_sprites.add(hero)
     game = Game(board, hero)
+    Game.start_screen
     Border(board.left, board.top,
            board.left, TILES_SIZE * board.height + board.top)
     Border(board.left, board.top,
@@ -459,7 +456,7 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                start_screen()
+                Game.start_screen
             if event.type == pygame.MOUSEBUTTONDOWN:
                 board.get_click(event.pos)
             if fight:
