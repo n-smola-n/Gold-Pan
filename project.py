@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+from random import choice
 import pygame_widgets
 from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
@@ -10,17 +11,29 @@ FPS = 20
 TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
-get_monitors()
+# get_monitors()
 
-TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png', '3': 'data\\chest1.png'}
-
+TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
+               '3': 'data\\chest1.png', '4': 'data\\floor.png'}
+ENEMIES = {'Бальтазар': (100, 100), 'Мельхиор': (50, 100), 'Каспар': (200, 100), 'Дракон': (500, 200)}
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
+walls_group = pygame.sprite.Group()
+enemies = pygame.sprite.Group()
 borders = pygame.sprite.Group()
+stairs = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = None
 
+
+def sweep():
+    all_sprites.clear()
+    tiles_group.clear()
+    walls_group.clear()
+    enemies.clear()
+    borders.clear()
+    stairs.clear()
 
 def load_image(fname, colorkey=None):
     fullname = fname
@@ -45,10 +58,6 @@ class BaseCharacter:
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
         self.alive = 1
 
-    def set_position(self, x, y):
-        self.pos_x = x
-        self.pos_y = y
-
     def is_alive(self):
         if self.hp <= 0:
             self.alive = 0
@@ -56,18 +65,24 @@ class BaseCharacter:
         else:
             return True
 
-    def get_damage(self, amount):
+    def get_damage(self, amount, defence=0):
         if self.is_alive():
-            self.hp -= amount
+            self.hp -= (amount - defence)
 
     def get_cords(self):
         return self.pos_x, self.pos_y
 
 
-class BaseEnemy(BaseCharacter):
-    def __init__(self, pos_x, pos_y, name, hp, damage):
-        super().__init__(hp)
-        self.name = name
+class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, ename, hp, damage):
+        pygame.sprite.Sprite.__init__(self)
+        self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
+        self.image = pygame.Surface((TILES_SIZE, TILES_SIZE))
+        self.image.fill((0, 100, 0))
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = pos_x * TILES_SIZE + 100, pos_y * TILES_SIZE + 100
+        self.alive = 0 ############################################################################исправить!
+        self.name = ename
         self.damage = damage
 
     def hit(self, target):
@@ -90,11 +105,11 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
         self.rect.x = pos_x
-        self.rect.y = pos_y - 20
-        self.rect.height -= 20
+        self.rect.y = pos_y
 
         self.name = name
         self.bread = 0
+        self.kills = 0
         self.weapon = Weapon('Кулаки', 10)
         self.defence = 0
 
@@ -133,7 +148,16 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
     def set_position(self, x, y, k):
         self.rect.x = x
         self.rect.y = y
-        if not pygame.sprite.spritecollideany(self, borders):
+        collide = pygame.sprite.spritecollideany(self, enemies)
+        if collide:
+            if collide.alive:
+                return Fight(self, collide)
+
+        collide = pygame.sprite.spritecollideany(self, stairs)
+        if collide:
+            return collide.next_map
+
+        if not pygame.sprite.spritecollideany(self, borders) and not pygame.sprite.spritecollideany(self, walls_group):
             if self.orientation != k and k != -1:
                 self.orientation = k
                 self.image = self.image_change()
@@ -142,23 +166,24 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             self.pos_x = x
             self.pos_y = y
             return
+
         self.rect.x = self.pos_x
         self.rect.y = self.pos_y
 
     def image_change(self):
         if self.orientation == 1:
             im = load_image('data\\MH_go.png')
-            return pygame.transform.scale(im, (80, 160))
+            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 3:
             im = load_image('data\\MH_go.png')
             im = pygame.transform.flip(im, flip_x=True, flip_y=False)
-            return pygame.transform.scale(im, (80, 160))
+            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 0:
             im = load_image(f'data\\MH_go{0}.png')
-            return pygame.transform.scale(im, (60, 160))
+            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 2:
             im = load_image(f'data\\MH_go{2}.png')
-            return pygame.transform.scale(im, (60, 160))
+            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
 
 
 class Weapon:
@@ -195,9 +220,9 @@ class Chest(pygame.sprite.Sprite):
 
 
 class Stair(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, next_room):
+    def __init__(self, pos_x, pos_y, next_map):
         super().__init__(tiles_group, all_sprites)
-        self.next_room = next_room
+        self.next_map = next_map
         image = load_image(TILE_IMAGES['2'])
         self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
         self.rect = self.image.get_rect().move(
@@ -223,38 +248,29 @@ class Border(pygame.sprite.Sprite):
 class Board:
     # создание поля
     def __init__(self, width, height, filename):
+        self.selected_map = None
         self.width = width
         self.height = height
         self.board = self.load_level(filename)
-        self.object_map = {}
+        self.map1_c = False
+        self.map2_c = False
+        self.map3_c = False
+        self.map4_c = False
 
         # значения по умолчанию
         self.left = 0
         self.top = 0
         self.cell_size = 20
-        self.colors = {'0': (0, 0, 0), '1': (255, 255, 255), '2': (255, 255, 0), '3': (100, 100, 100)}
 
     # настройка внешнего вида
     def set_view(self, left, top, cell_size):
         self.left = left
         self.top = top
         self.cell_size = cell_size
-    '''
 
-    def get_cell(self, mouse_pos):
-        if self.left < mouse_pos[0] < self.cell_size * self.width + self.left and \
-                self.top < mouse_pos[1] < self.cell_size * self.height + self.top:
-            for y in range(self.height):
-                for x in range(self.width):
-                    xf = self.left + x * self.cell_size
-                    yf = self.top + y * self.cell_size
-                    if xf < mouse_pos[0] < self.cell_size + xf and \
-                            yf < mouse_pos[1] < self.cell_size + yf:
-                        return x, y
-        return None
-'''
     def load_level(self, filename):
         filename = filename
+        self.selected_map = filename
         with open(filename, 'r') as mapFile:
             level_map = [line.strip() for line in mapFile]
         return level_map
@@ -265,23 +281,49 @@ class Board:
                 if level[y][x] == '0':
                     Tile('0', x, y)
                 elif level[y][x] == '1':
-                    Tile('1', x, y)
-                elif level[y][x] == '2':
-                    Stair(x, y, 'название след. карты')
-                elif level[y][x] == '3':
-                    Chest(x, y, [])
+                    walls_group.add(Tile('1', x, y))
 
-    def on_click(self, cell_coords):
-        print(cell_coords)
+                elif level[y][x] == 'q':
+                    stairs.add(Stair(x, y, 'map1.txt'))
 
-    def get_click(self, mouse_pos):
-        cell = self.get_cell(mouse_pos)
-        self.on_click(cell)
+                elif level[y][x] == 'w':
+                    stairs.add(Stair(x, y, 'map2.txt'))
+
+                elif level[y][x] == 'e':
+                    stairs.add(Stair(x, y, 'map3.txt'))
+
+                elif level[y][x] == 'r':
+                    stairs.add(Stair(x, y, 'map4.txt'))
+
+                elif level[y][x] == 'H':
+                    Chest(x, y, [Armor('Шлем', 30)])
+
+                elif level[y][x] == 'S':
+                    Chest(x, y, [Weapon('Меч', 60)])
+
+                elif level[y][x] == 'P':
+                    Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100)])
+
+                elif level[y][x] == 'M':
+                    Tile('0', x, y)
+                    enemies.add(BaseEnemy(x, y, 'Мельхиор', *ENEMIES['Мельхиор']))
+
+                elif level[y][x] == 'B':
+                    Tile('0', x, y)
+                    enemies.add(BaseEnemy(x, y, 'Бальтазар', *ENEMIES['Бальтазар']))
+
+                elif level[y][x] == 'C':
+                    Tile('0', x, y)
+                    enemies.add(BaseEnemy(x, y, 'Каспар', *ENEMIES['Каспар']))
+
+                elif level[y][x] == 'K':
+                    Tile('0', x, y)
+                    enemies.add(BaseEnemy(x, y, 'Дракон', *ENEMIES['Дракон']))
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites)
+        super().__init__(all_sprites)
         image = load_image(TILE_IMAGES[tile_type], colorkey=-1)
         self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
         self.rect = self.image.get_rect().move(
@@ -310,14 +352,23 @@ class Game:
         elif keys[pygame.K_DOWN]:
             next_y += 10
             self.k = 2
-        self.hero.set_position(next_x, next_y, self.k)
+
+        action = self.hero.set_position(next_x, next_y, self.k)
+
+        if type(action).__name__ == 'Fight':
+            print('игра уже началась')
+
+        elif type(action).__name__ == 'str':
+            pygame.display.flip()
+            level = self.board.load_level(action)
+            self.board.render(level)
 
     def action_new_game(self):
         self.running = False
         #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
         screen.fill((0, 0, 0))
         textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
-                          borderColour=(255, 0, 0), textColour=(0, 200, 0),
+                          borderColour=(255, 255, 255), textColour=(0, 0, 0),
                           radius=10, borderThickness=5)
         while True:
             events = pygame.event.get()
@@ -352,7 +403,6 @@ class Game:
                                  margin=0,
                                  inactiveColour=(0, 100, 255),
                                  hoverColour=(255, 100, 30),
-                                 pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
                                  radius=50,  # Radius of border corners (leave empty for not curved)
                                  onClick=lambda: self.action_new_game())
 
@@ -362,7 +412,6 @@ class Game:
                              margin=0,
                              inactiveColour=(0, 100, 255),
                              hoverColour=(255, 100, 30),
-                             pressedColour=(0, 0, 0),  # Colour of button when not being interacted with
                              radius=50,  # Radius of border corners (leave empty for not curved)
                              onClick=lambda: terminate
                              )
@@ -373,7 +422,6 @@ class Game:
                                 margin=0,
                                 inactiveColour=(0, 100, 255),
                                 hoverColour=(255, 100, 30),
-                                pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
                                 radius=50,  # Radius of border corners (leave empty for not curved)
                                 onClick=lambda: terminate
                                 )
@@ -384,7 +432,6 @@ class Game:
                              margin=0,
                              inactiveColour=(0, 100, 255),
                              hoverColour=(255, 100, 30),
-                             pressedColour=(0, 255, 0),  # Colour of button when not being interacted with
                              radius=50,  # Radius of border corners (leave empty for not curved)
                              onClick=terminate
                              )
@@ -395,7 +442,7 @@ class Game:
         font = pygame.font.Font(None, 30)
         text_coord = 50
         for line in intro_text:
-            string_rendered = font.render(line, 1, pygame.Color('white'))
+            string_rendered = font.render(line, True, pygame.Color('white'))
             intro_rect = string_rendered.get_rect()
             text_coord += 10
             intro_rect.top = text_coord
@@ -405,23 +452,25 @@ class Game:
 
         self.running = True
         while self.running:
-            for event in pygame.event.get():
+            events = pygame.event.get()
+            for event in events:
                 for i in button_group:
                     i.draw()
-                    i.listen(event)
-
-                pygame_widgets.update(event)
+                    i.listen(events)
+                pygame_widgets.update(events)
                 if event.type == pygame.QUIT:
                     terminate()
                 elif event.type == pygame.KEYDOWN or \
                         event.type == pygame.MOUSEBUTTONDOWN:
                     return
+
             pygame.display.flip()
             clock.tick(FPS)
 
 
 class Fight:
-    pass
+    def __init__(self, hero, enemy):
+        self.hero, self.enemy = hero, enemy
 
 
 def terminate():
@@ -431,7 +480,7 @@ def terminate():
 
 def main():
     screen.fill((0, 0, 0))
-    hero = MainHero(300, 300, 50, name)
+    hero = MainHero(150, 400, 50, name)
     board = Board(33, 17, 'map1.txt')
 
     game = Game(board, hero)
@@ -450,7 +499,6 @@ def main():
            board.left + TILES_SIZE * board.width, board.top)
 
     running = True
-    i = 0
     fight = False
     while running:
         for event in pygame.event.get():
@@ -458,8 +506,6 @@ def main():
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                board.get_click(event.pos)
             if fight:
                 pass
 
@@ -468,6 +514,8 @@ def main():
 
         all_sprites.draw(screen)
         all_sprites.update()
+
+        enemies.draw(screen)
 
         pygame.display.flip()
         clock.tick(20)
