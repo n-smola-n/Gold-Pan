@@ -1,7 +1,7 @@
 import pygame
 import sys
 import os
-from random import choice
+from random import choice, randint
 import pygame_widgets
 from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
@@ -22,18 +22,25 @@ walls_group = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
 borders = pygame.sprite.Group()
 stairs = pygame.sprite.Group()
+hero_group = pygame.sprite.Group()
+chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = None
 
 
 def sweep():
-    all_sprites.clear()
-    tiles_group.clear()
-    walls_group.clear()
-    enemies.clear()
-    borders.clear()
-    stairs.clear()
+    for i in all_sprites:
+        i.kill()
+    for i in enemies:
+        i.kill()
+    all_sprites.clear(screen, screen)
+    tiles_group.clear(screen, screen)
+    walls_group.clear(screen, screen)
+    enemies.clear(screen, screen)
+    stairs.clear(screen, screen)
+    screen.fill((0, 0, 0))
+
 
 def load_image(fname, colorkey=None):
     fullname = fname
@@ -99,7 +106,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         BaseCharacter.__init__(self, pos_x, pos_y, hp)
         pygame.sprite.Sprite.__init__(self)
 
-        self.armor = []
+        self.armor = None
         self.orientation = 1
         self.image = self.image_change()
         self.rect = self.image.get_rect()
@@ -112,6 +119,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.kills = 0
         self.weapon = Weapon('Кулаки', 10)
         self.defence = 0
+        self.teleport_timer = 0
 
     def hit(self, target):
         self.weapon.hit(target)
@@ -126,7 +134,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.bread += 1
 
     def add_armor(self, armor):
-        self.armor.append(armor)
+        self.armor = armor
         self.defence += armor.defence
 
     def heal(self, amount):
@@ -134,15 +142,18 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.hp = self.hp % 200 if self.hp != 200 else 200
         print('Полечился, теперь здоровья', self.hp)
 
-    def check_chest(self, hero, chest):
+    def check_chest(self, chest):
         if chest.stuff:
             for i in chest.stuff:
                 if i == 'Bread':
-                    hero.add_bread(i)
-                elif type(i) == Weapon:
-                    hero.add_weapon(i)
-                elif type(i) == Armor:
-                    hero.add_armor(i)
+                    self.add_bread(i)
+                    print('+1 хлеб')
+                elif type(i).__name__ == 'Weapon':
+                    self.add_weapon(i)
+                    print(f'В инвентарь добавлено оружие: {i.name}')
+                elif type(i).__name__ == 'Armor':
+                    self.add_armor(i)
+                    print(f'Вы экипировали доспех: {i.name}')
             chest.stuff = []
 
     def set_position(self, x, y, k):
@@ -153,8 +164,20 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             if collide.alive:
                 return Fight(self, collide)
 
-        collide = pygame.sprite.spritecollideany(self, stairs)
+        collide = pygame.sprite.spritecollideany(self, chests)
         if collide:
+            print(collide.stuff)
+            self.check_chest(collide)
+            print(self.armor)
+
+        collide = pygame.sprite.spritecollideany(self, stairs)
+        if collide and not self.teleport_timer:
+            if collide.pos:
+                self.rect.x = collide.pos[0]
+                self.rect.y = collide.pos[1]
+                self.pos_x = collide.pos[0]
+                self.pos_y = collide.pos[1]
+            self.teleport_timer = 20
             return collide.next_map
 
         if not pygame.sprite.spritecollideany(self, borders) and not pygame.sprite.spritecollideany(self, walls_group):
@@ -210,9 +233,10 @@ class Armor:
 
 
 class Chest(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, *stuff):
-        super().__init__(all_sprites)
-        self.stuff = list(stuff)
+    def __init__(self, pos_x, pos_y, stuff):
+        super().__init__(all_sprites, chests)
+        self.stuff = [stuff[0]] + ['Bread'] * stuff[1]
+        print(self.stuff)
         image = load_image(TILE_IMAGES['3'])
         self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
         self.rect = self.image.get_rect().move(
@@ -220,9 +244,10 @@ class Chest(pygame.sprite.Sprite):
 
 
 class Stair(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, next_map):
+    def __init__(self, pos_x, pos_y, next_map, pos=None):
         super().__init__(tiles_group, all_sprites)
         self.next_map = next_map
+        self.pos = pos
         image = load_image(TILE_IMAGES['2'])
         self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
         self.rect = self.image.get_rect().move(
@@ -232,7 +257,7 @@ class Stair(pygame.sprite.Sprite):
 class Border(pygame.sprite.Sprite):
     # строго вертикальный или строго горизонтальный отрезок
     def __init__(self, x1, y1, x2, y2):
-        super().__init__(all_sprites)
+        super().__init__(borders)
         if x1 == x2:  # вертикальная стенка
             self.add(borders)
             self.image = pygame.Surface([1, y2 - y1])
@@ -252,10 +277,6 @@ class Board:
         self.width = width
         self.height = height
         self.board = self.load_level(filename)
-        self.map1_c = False
-        self.map2_c = False
-        self.map3_c = False
-        self.map4_c = False
 
         # значения по умолчанию
         self.left = 0
@@ -293,16 +314,16 @@ class Board:
                     stairs.add(Stair(x, y, 'map3.txt'))
 
                 elif level[y][x] == 'r':
-                    stairs.add(Stair(x, y, 'map4.txt'))
+                    stairs.add(Stair(x, y, 'map4.txt', pos=(200, 500)))
 
                 elif level[y][x] == 'H':
-                    Chest(x, y, [Armor('Шлем', 30)])
+                    Chest(x, y, [Armor('Шлем', 30), randint(0, 2)])
 
                 elif level[y][x] == 'S':
-                    Chest(x, y, [Weapon('Меч', 60)])
+                    Chest(x, y, [Weapon('Меч', 60), randint(0, 2)])
 
                 elif level[y][x] == 'P':
-                    Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100)])
+                    Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100), randint(0, 2)])
 
                 elif level[y][x] == 'M':
                     Tile('0', x, y)
@@ -338,6 +359,8 @@ class Game:
         self.k = 1
 
     def update_hero(self):
+        if self.hero.teleport_timer:
+            self.hero.teleport_timer -= 1
         next_x, next_y = self.hero.get_cords()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
@@ -360,6 +383,7 @@ class Game:
 
         elif type(action).__name__ == 'str':
             pygame.display.flip()
+            sweep()
             level = self.board.load_level(action)
             self.board.render(level)
 
@@ -487,7 +511,7 @@ def main():
     Game.start_screen(game)
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
-    all_sprites.add(hero)
+    hero_group.add(hero)
 
     Border(board.left, board.top,
            board.left, TILES_SIZE * board.height + board.top)
@@ -512,9 +536,9 @@ def main():
         screen.fill((0, 0, 0))
         game.update_hero()
 
-        all_sprites.draw(screen)
-        all_sprites.update()
-
+        all_sprites.draw(screen)  ###
+        borders.draw(screen)
+        hero_group.draw(screen)
         enemies.draw(screen)
 
         pygame.display.flip()
