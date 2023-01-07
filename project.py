@@ -5,7 +5,6 @@ from random import choice, randint
 import pygame_widgets
 from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
-
 from screeninfo import get_monitors
 
 
@@ -82,6 +81,18 @@ class BaseCharacter:
     def get_cords(self):
         return self.pos_x, self.pos_y
 
+    def get_name(self):
+        return self.name
+
+    def get_hp(self):
+        return self.hp
+
+    def get_bread(self):
+        return self.bread
+
+    def get_weapon(self):
+        return self.weapon
+
 
 class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, ename, hp, damage):
@@ -91,7 +102,7 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
         self.image.fill((0, 100, 0))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos_x * TILES_SIZE + 100, pos_y * TILES_SIZE + 100
-        self.alive = 0
+        self.alive = 1 ############################################################################исправить!
         self.name = ename
         self.damage = damage
 
@@ -211,17 +222,6 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             im = load_image(f'data\\MH_go{2}.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
 
-    def get_name(self):
-        return self.name
-
-    def get_hp(self):
-        return self.hp
-
-    def get_bread(self):
-        return self.bread
-
-    def get_weapon(self):
-        return self.weapon
 
 class Weapon:
     def __init__(self, name, damage):
@@ -511,19 +511,19 @@ class Fight:
         self.hero, self.enemy = hero, enemy
         self.hhp = self.hero.get_hp()
         self.ehp = self.enemy.get_hp()
-        self.hdam = self.hero.get_damage()
-        self.edam = self.enemy.get_damage()
+
         self.fight = True
         self.live = True
-        button = Button(screen, 750, 700, 400, 150,
+        self.button = Button(screen, 750, 700, 400, 150,
                     text='Столкновение!', fontSize=70,
                     margin=20, inactiveColour=(200, 50, 0),
                     hoverColour=(150, 0, 0), pressedColour=(0, 200, 20),
                     radius=20, onClick=lambda: self.clicked())
+        self.main()
 
     def clicked(self):
-        self.hhp -= self.edam
-        self.ehp -= self.hdam
+        self.hero.get_damage(self.enemy.damage)
+        self.enemy.get_damage(self.hero.weapon.damage)
         if self.ehp < 0:
             self.fight = False
         elif self.hhp < 0:
@@ -531,9 +531,12 @@ class Fight:
             self.live = False
 
     def main(self):
+        pygame.display.flip()
+        screen.fill((128, 128, 128))
+
         while fight:
-            for event in pygame.event.get():
-                events = pygame.event.get()
+            events = pygame.event.get()
+            for event in events:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     quit()
@@ -550,10 +553,12 @@ class Fight:
             text_surface1 = my_font.render(f"Осталось {self.ehp} hp!", False, (0, 0, 0))
             screen.blit(text_surface, (100, 900))
             screen.blit(text_surface1, (1200, 900))
-            pygame_widgets.update(events)
+            self.button.listen(events)
+            self.button.draw(events)
+
             pygame.display.update()
             pygame.display.flip()
-
+            clock.tick(20)
 
 def terminate():
     pygame.quit()
@@ -562,7 +567,7 @@ def terminate():
 
 def main():
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 50, 'Alex')
+    hero = MainHero(150, 400, 50, name)
     board = Board(33, 17, 'map1.txt')
 
     game = Game(board, hero)
@@ -581,17 +586,12 @@ def main():
            board.left + TILES_SIZE * board.width, board.top)
 
     running = True
-    fight = False
     while running:
-        events = pygame.event.get()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
-            if fight:
-                Fight()
-
 
         screen.fill((0, 0, 0))
         game.update_hero()
