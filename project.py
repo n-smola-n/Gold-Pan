@@ -5,12 +5,15 @@ from random import choice, randint
 import pygame_widgets
 from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
+
 from screeninfo import get_monitors
+
 
 FPS = 20
 TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
+fight = False
 # get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
@@ -88,7 +91,7 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
         self.image.fill((0, 100, 0))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos_x * TILES_SIZE + 100, pos_y * TILES_SIZE + 100
-        self.alive = 0 ############################################################################исправить!
+        self.alive = 0
         self.name = ename
         self.damage = damage
 
@@ -146,7 +149,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         if chest.stuff:
             for i in chest.stuff:
                 if i == 'Bread':
-                    self.add_bread(i)
+                    self.add_bread()
                     print('+1 хлеб')
                 elif type(i).__name__ == 'Weapon':
                     self.add_weapon(i)
@@ -208,6 +211,17 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             im = load_image(f'data\\MH_go{2}.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
 
+    def get_name(self):
+        return self.name
+
+    def get_hp(self):
+        return self.hp
+
+    def get_bread(self):
+        return self.bread
+
+    def get_weapon(self):
+        return self.weapon
 
 class Weapon:
     def __init__(self, name, damage):
@@ -495,6 +509,50 @@ class Game:
 class Fight:
     def __init__(self, hero, enemy):
         self.hero, self.enemy = hero, enemy
+        self.hhp = self.hero.get_hp()
+        self.ehp = self.enemy.get_hp()
+        self.hdam = self.hero.get_damage()
+        self.edam = self.enemy.get_damage()
+        self.fight = True
+        self.live = True
+        button = Button(screen, 750, 700, 400, 150,
+                    text='Столкновение!', fontSize=70,
+                    margin=20, inactiveColour=(200, 50, 0),
+                    hoverColour=(150, 0, 0), pressedColour=(0, 200, 20),
+                    radius=20, onClick=lambda: self.clicked())
+
+    def clicked(self):
+        self.hhp -= self.edam
+        self.ehp -= self.hdam
+        if self.ehp < 0:
+            self.fight = False
+        elif self.hhp < 0:
+            self.fight = False
+            self.live = False
+
+    def main(self):
+        while fight:
+            for event in pygame.event.get():
+                events = pygame.event.get()
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    quit()
+            screen.fill((128, 128, 128))
+
+            fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+            screen.blit(fon, (0, 0))
+            hero = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (8).png'), (700, 800))
+            screen.blit(hero, (100, 50))
+            enemy = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (15).png'), (400, 500))
+            screen.blit(enemy, (1200, 150))
+            my_font = pygame.font.SysFont(None, 40)
+            text_surface = my_font.render(f"Осталось {self.hhp} hp!", False, (0, 0, 0))
+            text_surface1 = my_font.render(f"Осталось {self.ehp} hp!", False, (0, 0, 0))
+            screen.blit(text_surface, (100, 900))
+            screen.blit(text_surface1, (1200, 900))
+            pygame_widgets.update(events)
+            pygame.display.update()
+            pygame.display.flip()
 
 
 def terminate():
@@ -504,7 +562,7 @@ def terminate():
 
 def main():
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 50, name)
+    hero = MainHero(150, 400, 50, 'Alex')
     board = Board(33, 17, 'map1.txt')
 
     game = Game(board, hero)
@@ -525,22 +583,33 @@ def main():
     running = True
     fight = False
     while running:
+        events = pygame.event.get()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
             if fight:
-                pass
+                Fight()
+
 
         screen.fill((0, 0, 0))
         game.update_hero()
 
-        all_sprites.draw(screen)  ###
+        all_sprites.draw(screen)
         borders.draw(screen)
         hero_group.draw(screen)
         enemies.draw(screen)
-
+        text = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (26).png'), (780, 150))
+        pygame.font.init()
+        my_font = pygame.font.SysFont(None, 40)
+        screen.blit(text, (950, 800))
+        text_surface = my_font.render(f'Name: {hero.get_name()}, HP: {hero.get_hp()}, Bread: {hero.get_bread()}',
+                                      False, (0, 0, 0))
+        text_surface1 = my_font.render(f' Weapon: {hero.get_weapon()}', False, (0, 0, 0))
+        screen.blit(text_surface, (1000, 850))
+        screen.blit(text_surface1, (1000, 900))
+        pygame.display.update()
         pygame.display.flip()
         clock.tick(20)
 
