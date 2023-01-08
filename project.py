@@ -509,24 +509,18 @@ class Game:
 class Fight:
     def __init__(self, hero, enemy):
         self.hero, self.enemy = hero, enemy
-        self.hhp = self.hero.get_hp()
-        self.ehp = self.enemy.get_hp()
-
         self.fight = True
         self.live = True
-        self.button = Button(screen, 750, 700, 400, 150,
-                    text='Столкновение!', fontSize=70,
-                    margin=20, inactiveColour=(200, 50, 0),
-                    hoverColour=(150, 0, 0), pressedColour=(0, 200, 20),
-                    radius=20, onClick=lambda: self.clicked())
         self.main()
 
     def clicked(self):
+        print(1)
         self.hero.get_damage(self.enemy.damage)
+        print(self.hero.hp)
         self.enemy.get_damage(self.hero.weapon.damage)
-        if self.ehp < 0:
+        if not self.enemy.is_alive():
             self.fight = False
-        elif self.hhp < 0:
+        if not self.hero.is_alive():
             self.fight = False
             self.live = False
 
@@ -534,12 +528,15 @@ class Fight:
         pygame.display.flip()
         screen.fill((128, 128, 128))
 
-        while fight:
+        while self.fight:
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     quit()
+                if pygame.key.get_pressed()[pygame.K_f]:
+                    self.clicked()
+
             screen.fill((128, 128, 128))
 
             fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
@@ -549,16 +546,15 @@ class Fight:
             enemy = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (15).png'), (400, 500))
             screen.blit(enemy, (1200, 150))
             my_font = pygame.font.SysFont(None, 40)
-            text_surface = my_font.render(f"Осталось {self.hhp} hp!", False, (0, 0, 0))
-            text_surface1 = my_font.render(f"Осталось {self.ehp} hp!", False, (0, 0, 0))
+            text_surface = my_font.render(f"Осталось {self.hero.hp} hp!", False, (0, 0, 0))
+            text_surface1 = my_font.render(f"Осталось {self.enemy.hp} hp!", False, (0, 0, 0))
             screen.blit(text_surface, (100, 900))
             screen.blit(text_surface1, (1200, 900))
-            self.button.listen(events)
-            self.button.draw(events)
 
             pygame.display.update()
             pygame.display.flip()
             clock.tick(20)
+
 
 def terminate():
     pygame.quit()
@@ -567,7 +563,7 @@ def terminate():
 
 def main():
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 50, name)
+    hero = MainHero(150, 400, 650, name)
     board = Board(33, 17, 'map1.txt')
 
     game = Game(board, hero)
