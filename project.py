@@ -5,6 +5,7 @@ from random import choice, randint
 import pygame_widgets
 from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
+from pygame_widgets.widget import WidgetHandler
 from screeninfo import get_monitors
 
 
@@ -13,7 +14,7 @@ TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
 fight = False
-# get_monitors()
+get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
                '3': 'data\\chest1.png', '4': 'data\\floor.png'}
@@ -415,6 +416,7 @@ class Game:
                     terminate()
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                     self.hero.name = textbox.getText()
+                    WidgetHandler.removeWidget(textbox)
                     return
             screen.fill((0, 0, 0))
 
@@ -442,7 +444,7 @@ class Game:
                                  inactiveColour=(0, 100, 255),
                                  hoverColour=(255, 100, 30),
                                  radius=50,  # Radius of border corners (leave empty for not curved)
-                                 onClick=lambda: self.action_new_game())
+                                 onClick=self.action_new_game)
 
         load_button = Button(screen, 150, 550, 350, 100,
                              text='Загрузить игру',  # Text to display
@@ -491,16 +493,10 @@ class Game:
         self.running = True
         while self.running:
             events = pygame.event.get()
+            pygame_widgets.update(events)
             for event in events:
-                for i in button_group:
-                    i.draw()
-                    i.listen(events)
-                pygame_widgets.update(events)
                 if event.type == pygame.QUIT:
                     terminate()
-                elif event.type == pygame.KEYDOWN or \
-                        event.type == pygame.MOUSEBUTTONDOWN:
-                    return
 
             pygame.display.flip()
             clock.tick(FPS)
