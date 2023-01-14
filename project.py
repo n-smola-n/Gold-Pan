@@ -33,6 +33,12 @@ chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = 'Alex'
+MUSIC = ['game.mp3', 'game-over.mp3', 'battle.mp3']
+
+
+def shoot(m):
+    pygame.mixer.music.load(m)
+    pygame.mixer.music.play()
 
 
 def sweep():
@@ -458,11 +464,12 @@ class Game:
         pass
 
     def game_over(self):
+        shoot(MUSIC[1])
         fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 110)
         my_font1 = pygame.font.SysFont(None, 270)
-        text_surface = my_font1.render(f"GAME OVER!", False, (0, 0, 0))
+        text_surface = my_font1.render(f"GAME OVER!", False, (255, 0, 0))
         screen.blit(text_surface, (400, 150))
         text_surface = my_font.render(f"К сожалению у Вас осталось 0 hp!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 500))
@@ -476,12 +483,12 @@ class Game:
             events = pygame.event.get()
             for event in events:
                 pygame_widgets.update(events)
+
                 if event.type == pygame.QUIT:
                     terminate()
                 elif event.type == pygame.KEYDOWN or \
                         event.type == pygame.MOUSEBUTTONDOWN:
                     return
-
             pygame.display.flip()
             clock.tick(FPS)
 
@@ -489,7 +496,7 @@ class Game:
         intro_text = ["Gold Pan", "", "",
                       "Правила игры",
                       "В режиме боя нажмите клавишу 'F' для атаки.",
-                      "Для поднятия hp ушь хлеб! -> Нажми клавишу 'B'."]
+                      "Для поднятия hp ешь хлеб! -> Нажми клавишу 'B'."]
 
         fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
         new_game_button = Button(screen, 150, 400, 350, 100,
@@ -543,6 +550,7 @@ class Game:
                     i.draw()
                     i.listen(events)
                 pygame_widgets.update(events)
+
                 if event.type == pygame.QUIT:
                     terminate()
                 elif event.type == pygame.KEYDOWN or \
@@ -558,6 +566,10 @@ class Fight:
         self.hero, self.enemy = hero, enemy
         self.fight = True
         self.live = True
+        self.mix = MUSIC[2]
+        self.x = 0
+        if self.enemy.hp == 400:
+            self.x = 1
         self.main()
 
     def clicked(self):
@@ -572,13 +584,43 @@ class Fight:
             self.live = False
             LIVE = False
 
+    def win(self):
+        shoot(MUSIC[1])
+        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+        screen.blit(fon, (0, 0))
+        my_font = pygame.font.SysFont(None, 100)
+        my_font1 = pygame.font.SysFont(None, 270)
+        text_surface = my_font1.render(f"YOU WIN!", False, (255, 0, 0))
+        screen.blit(text_surface, (400, 150))
+        text_surface = my_font.render(f"Поздравляем! Вы выиграли!", False, (0, 0, 0))
+        screen.blit(text_surface, (570, 500))
+        text_surface = my_font.render(f"Вы браво сражались и заслужили победу!", False, (0, 0, 0))
+        screen.blit(text_surface, (570, 700))
+        my_font3 = pygame.font.SysFont(None, 80)
+        text_surface = my_font3.render(f"Дождитесь загрузки кнопок для выхода.", False, (0, 0, 0))
+        screen.blit(text_surface, (400, 900))
+        self.running = True
+        while self.running:
+            events = pygame.event.get()
+            for event in events:
+                pygame_widgets.update(events)
+
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.KEYDOWN or \
+                        event.type == pygame.MOUSEBUTTONDOWN:
+                    return
+            pygame.display.flip()
+            clock.tick(FPS)
+
     def main(self):
         pygame.display.flip()
         screen.fill((128, 128, 128))
-
+        shoot(self.mix)
         while self.fight:
             events = pygame.event.get()
             for event in events:
+
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     quit()
@@ -602,6 +644,9 @@ class Fight:
             pygame.display.update()
             pygame.display.flip()
             clock.tick(20)
+        if self.x == 1:
+            self.win()
+        shoot(MUSIC[0])
 
 
 def terminate():
@@ -610,8 +655,9 @@ def terminate():
 
 
 def main():
+    shoot(MUSIC[0])
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 650, name)
+    hero = MainHero(150, 400, 800, name)
     board = Board(33, 17, 'map1.txt')
 
     game = Game(board, hero)
@@ -636,6 +682,7 @@ def main():
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
+
             if not LIVE:
                 game.game_over()
                 running = False
