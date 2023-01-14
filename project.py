@@ -620,7 +620,6 @@ class Fight:
         while self.fight:
             events = pygame.event.get()
             for event in events:
-
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     quit()
@@ -682,7 +681,6 @@ def main():
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
-
             if not LIVE:
                 game.game_over()
                 running = False
