@@ -7,17 +7,21 @@ from pygame_widgets.button import Button
 from pygame_widgets.textbox import TextBox
 from screeninfo import get_monitors
 
-
+pygame.init()
 FPS = 20
 TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
 fight = False
+LIVE = True
 # get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
-               '3': 'data\\chest1.png', '4': 'data\\floor.png'}
-ENEMIES = {'Бальтазар': (100, 100), 'Мельхиор': (50, 100), 'Каспар': (200, 100), 'Дракон': (500, 200)}
+               '3': 'пикс\\pixil-frame-0 (19).png', '4': 'data\\floor.png'}
+ENEMIES = {'Бальтазар': [100, 50, 'пикс\\pixil-frame-0 (15).png'],
+           'Мельхиор': [150, 60, 'пикс\\pixil-frame-0 (18).png'],
+           'Каспар': [200, 70, 'пикс\\pixil-frame-0 (17).png'],
+           'Дракон': [400, 90, 'пикс\\pixil-frame-0 (16).png']}
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
@@ -28,7 +32,7 @@ hero_group = pygame.sprite.Group()
 chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
-name = None
+name = 'Alex'
 
 
 def sweep():
@@ -95,7 +99,7 @@ class BaseCharacter:
 
 
 class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, ename, hp, damage):
+    def __init__(self, pos_x, pos_y, ename, hp, damage, pict):
         pygame.sprite.Sprite.__init__(self)
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
         self.image = pygame.Surface((TILES_SIZE, TILES_SIZE))
@@ -105,12 +109,23 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
         self.alive = 1 ############################################################################исправить!
         self.name = ename
         self.damage = damage
+        self.pict = pict
 
     def hit(self, target):
         target.get_damage(self.damage)
 
     def get_info(self):
         return [f'Имя врага: {self.name}', f'Здоровье врага: {self.hp}', f'Сила удара: {self.damage}']
+
+    def is_alive(self):
+        if self.hp <= 0:
+            self.alive = 0
+            return False
+        else:
+            return True
+
+    def get_pict(self):
+        return self.pict
 
 
 class MainHero(BaseCharacter, pygame.sprite.Sprite):
@@ -131,13 +146,27 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.name = name
         self.bread = 0
         self.kills = 0
-        self.weapon = Weapon('Кулаки', 10)
+        self.weapon = Weapon('Кулаки', 40)
         self.defence = 0
         self.teleport_timer = 0
 
     def hit(self, target):
         self.weapon.hit(target)
         return
+
+    def help(self):
+        if self.bread != 0:
+            self.bread -= 1
+            self.hp += 100
+
+    def is_alive(self):
+        global LIVE
+        if self.hp <= 0:
+            self.alive = 0
+            LIVE = False
+            return False
+        else:
+            return True
 
     def add_weapon(self, weapon):
         self.weapon = weapon
@@ -428,11 +457,39 @@ class Game:
     def action_options(self):
         pass
 
+    def game_over(self):
+        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+        screen.blit(fon, (0, 0))
+        my_font = pygame.font.SysFont(None, 110)
+        my_font1 = pygame.font.SysFont(None, 270)
+        text_surface = my_font1.render(f"GAME OVER!", False, (0, 0, 0))
+        screen.blit(text_surface, (400, 150))
+        text_surface = my_font.render(f"К сожалению у Вас осталось 0 hp!", False, (0, 0, 0))
+        screen.blit(text_surface, (570, 500))
+        text_surface = my_font.render(f"Попробуйте пройти игру еще раз!", False, (0, 0, 0))
+        screen.blit(text_surface, (570, 700))
+        my_font3 = pygame.font.SysFont(None, 80)
+        text_surface = my_font3.render(f"Дождитесь загрузки кнопок для выхода.", False, (0, 0, 0))
+        screen.blit(text_surface, (400, 900))
+        self.running = True
+        while self.running:
+            events = pygame.event.get()
+            for event in events:
+                pygame_widgets.update(events)
+                if event.type == pygame.QUIT:
+                    terminate()
+                elif event.type == pygame.KEYDOWN or \
+                        event.type == pygame.MOUSEBUTTONDOWN:
+                    return
+
+            pygame.display.flip()
+            clock.tick(FPS)
+
     def start_screen(self):
-        intro_text = ["Gold Pan", "",
+        intro_text = ["Gold Pan", "", "",
                       "Правила игры",
-                      "Если в правилах несколько строк,",
-                      "приходится выводить их построчно"]
+                      "В режиме боя нажмите клавишу 'F' для атаки.",
+                      "Для поднятия hp ушь хлеб! -> Нажми клавишу 'B'."]
 
         fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
         new_game_button = Button(screen, 150, 400, 350, 100,
@@ -454,17 +511,7 @@ class Game:
                              onClick=lambda: terminate
                              )
 
-        options_button = Button(screen, 150, 700, 350, 100,
-                                text='Опции',  # Text to display
-                                fontSize=50,  # Size of font
-                                margin=0,
-                                inactiveColour=(0, 100, 255),
-                                hoverColour=(255, 100, 30),
-                                radius=50,  # Radius of border corners (leave empty for not curved)
-                                onClick=lambda: terminate
-                                )
-
-        exit_button = Button(screen, 150, 850, 350, 100,
+        exit_button = Button(screen, 150, 700, 350, 100,
                              text='Выход из игры',  # Text to display
                              fontSize=50,  # Size of font
                              margin=0,
@@ -474,17 +521,17 @@ class Game:
                              onClick=terminate
                              )
 
-        button_group = [new_game_button, load_button, options_button, exit_button]
+        button_group = [new_game_button, load_button, exit_button]
 
         screen.blit(fon, (0, 0))
-        font = pygame.font.Font(None, 30)
+        font = pygame.font.Font(None, 50)
         text_coord = 50
         for line in intro_text:
             string_rendered = font.render(line, True, pygame.Color('white'))
             intro_rect = string_rendered.get_rect()
             text_coord += 10
             intro_rect.top = text_coord
-            intro_rect.x = 10
+            intro_rect.x = 70
             text_coord += intro_rect.height
             screen.blit(string_rendered, intro_rect)
 
@@ -514,7 +561,7 @@ class Fight:
         self.main()
 
     def clicked(self):
-        print(1)
+        global LIVE
         self.hero.get_damage(self.enemy.damage)
         print(self.hero.hp)
         self.enemy.get_damage(self.hero.weapon.damage)
@@ -523,6 +570,7 @@ class Fight:
         if not self.hero.is_alive():
             self.fight = False
             self.live = False
+            LIVE = False
 
     def main(self):
         pygame.display.flip()
@@ -543,7 +591,7 @@ class Fight:
             screen.blit(fon, (0, 0))
             hero = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (8).png'), (700, 800))
             screen.blit(hero, (100, 50))
-            enemy = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (15).png'), (400, 500))
+            enemy = pygame.transform.scale(load_image(self.enemy.pict), (400, 500))
             screen.blit(enemy, (1200, 150))
             my_font = pygame.font.SysFont(None, 40)
             text_surface = my_font.render(f"Осталось {self.hero.hp} hp!", False, (0, 0, 0))
@@ -588,6 +636,11 @@ def main():
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
+            if not LIVE:
+                game.game_over()
+                running = False
+            if pygame.key.get_pressed()[pygame.K_b]:
+                hero.help()
 
         screen.fill((0, 0, 0))
         game.update_hero()
