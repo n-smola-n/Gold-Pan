@@ -382,16 +382,16 @@ class Board:
                     walls_group.add(Tile('1', x, y))
 
                 elif level[y][x] == 'q':
-                    stairs.add(Stair(x, y, 'map1.txt'))
+                    stairs.add(Stair(x, y, 'new_data\\map1.txt'))
 
                 elif level[y][x] == 'w':
-                    stairs.add(Stair(x, y, 'map2.txt'))
+                    stairs.add(Stair(x, y, 'new_data\\map2.txt'))
 
                 elif level[y][x] == 'e':
-                    stairs.add(Stair(x, y, 'map3.txt'))
+                    stairs.add(Stair(x, y, 'new_data\\map3.txt'))
 
                 elif level[y][x] == 'r':
-                    stairs.add(Stair(x, y, 'map4.txt', pos=(200, 500)))
+                    stairs.add(Stair(x, y, 'new_data\\map4.txt', pos=(200, 500)))
 
                 elif level[y][x] == 'H':
                     Tile('0', x, y)
@@ -688,7 +688,7 @@ def new_game():
     screen.fill((0, 0, 0))
     hero = MainHero(150, 400, 800, name)
     hero_group.add(hero)
-    board = Board(33, 17, 'map1.txt')
+    board = Board(33, 17, 'new_data\\map1.txt')
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
     board.create_borders()
