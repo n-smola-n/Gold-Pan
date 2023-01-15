@@ -1,0 +1,6 @@
+pygame
+sys
+os
+random
+pygame_widgets
+screeninfo
