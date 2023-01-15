@@ -13,7 +13,6 @@ TILES_SIZE = 50
 WIDTH, HEIGHT = 500, 500
 TOP, LEFT = 100, 100
 fight = False
-LIVE = True
 # get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
@@ -33,7 +32,7 @@ chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = 'Alex'
-MUSIC = ['game.mp3', 'game-over.mp3', 'battle.mp3']
+MUSIC = ['data\\game.mp3', 'data\\game-over.mp3', 'data\\battle.mp3', 'data\\final.mp3', 'data\\bad_final.mp3']
 
 
 def shoot(m):
@@ -109,10 +108,9 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
         self.image = pygame.Surface((TILES_SIZE, TILES_SIZE))
-        self.image.fill((0, 100, 0))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = pos_x * TILES_SIZE + 100, pos_y * TILES_SIZE + 100
-        self.alive = 1 ############################################################################исправить!
+        self.alive = 1
         self.name = ename
         self.damage = damage
         self.pict = pict
@@ -310,12 +308,12 @@ class Border(pygame.sprite.Sprite):
         if x1 == x2:  # вертикальная стенка
             self.add(borders)
             self.image = pygame.Surface([1, y2 - y1])
-            self.image.fill((255, 0, 0))
+            self.image.fill((0, 0, 0))
             self.rect = pygame.Rect(x1, y1, 1, y2 - y1)
         else:  # горизонтальная стенка
             self.add(borders)
             self.image = pygame.Surface([x2 - x1, 1])
-            self.image.fill((255, 0, 0))
+            self.image.fill((0, 0, 0))
             self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
 
 
@@ -344,6 +342,16 @@ class Board:
         with open(filename, 'r') as mapFile:
             level_map = [line.strip() for line in mapFile]
         return level_map
+
+    def create_borders(self):
+        Border(self.left, self.top,
+               self.left, TILES_SIZE * self.height + self.top)
+        Border(self.left, self.top,
+               TILES_SIZE * self.width + self.left, self.top)
+        Border(self.left + TILES_SIZE * self.width, self.top,
+               self.left + TILES_SIZE * self.width, TILES_SIZE * self.height + self.top)
+        Border(self.left, self.top + TILES_SIZE * self.height,
+               self.left + TILES_SIZE * self.width, self.top)
 
     def render(self, level):
         for y in range(len(level)):
@@ -375,20 +383,23 @@ class Board:
                     Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100), randint(0, 2)])
 
                 elif level[y][x] == 'M':
-                    Tile('0', x, y)
                     enemies.add(BaseEnemy(x, y, 'Мельхиор', *ENEMIES['Мельхиор']))
+                    Tile('0', x, y)
 
                 elif level[y][x] == 'B':
-                    Tile('0', x, y)
+
                     enemies.add(BaseEnemy(x, y, 'Бальтазар', *ENEMIES['Бальтазар']))
+                    Tile('0', x, y)
 
                 elif level[y][x] == 'C':
-                    Tile('0', x, y)
+
                     enemies.add(BaseEnemy(x, y, 'Каспар', *ENEMIES['Каспар']))
+                    Tile('0', x, y)
 
                 elif level[y][x] == 'K':
-                    Tile('0', x, y)
+
                     enemies.add(BaseEnemy(x, y, 'Дракон', *ENEMIES['Дракон']))
+                    Tile('0', x, y)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -438,7 +449,6 @@ class Game:
 
     def action_new_game(self):
         self.running = False
-        #  +- Проверка на существование прогресса, предупреждение о том, что та игра будет стерта
         screen.fill((0, 0, 0))
         textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
                           borderColour=(255, 255, 255), textColour=(0, 0, 0),
@@ -465,6 +475,8 @@ class Game:
 
     def game_over(self):
         shoot(MUSIC[1])
+        hero_group.sprites()[0].kill()
+        hero_group.clear(screen, screen)
         fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 110)
@@ -475,9 +487,6 @@ class Game:
         screen.blit(text_surface, (570, 500))
         text_surface = my_font.render(f"Попробуйте пройти игру еще раз!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 700))
-        my_font3 = pygame.font.SysFont(None, 80)
-        text_surface = my_font3.render(f"Дождитесь загрузки кнопок для выхода.", False, (0, 0, 0))
-        screen.blit(text_surface, (400, 900))
         self.running = True
         while self.running:
             events = pygame.event.get()
@@ -573,7 +582,6 @@ class Fight:
         self.main()
 
     def clicked(self):
-        global LIVE
         self.hero.get_damage(self.enemy.damage)
         print(self.hero.hp)
         self.enemy.get_damage(self.hero.weapon.damage)
@@ -581,8 +589,7 @@ class Fight:
             self.fight = False
         if not self.hero.is_alive():
             self.fight = False
-            self.live = False
-            LIVE = False
+            self.hero.alive = 0
 
     def win(self):
         shoot(MUSIC[1])
@@ -653,39 +660,38 @@ def terminate():
     sys.exit()
 
 
-def main():
-    shoot(MUSIC[0])
+def new_game():
+    sweep()
     screen.fill((0, 0, 0))
     hero = MainHero(150, 400, 800, name)
+    hero_group.add(hero)
     board = Board(33, 17, 'map1.txt')
-
-    game = Game(board, hero)
-    Game.start_screen(game)
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
-    hero_group.add(hero)
+    board.create_borders()
+    game = Game(board, hero)
+    return game
 
-    Border(board.left, board.top,
-           board.left, TILES_SIZE * board.height + board.top)
-    Border(board.left, board.top,
-           TILES_SIZE * board.width + board.left, board.top - hero.rect.height)
-    Border(board.left + TILES_SIZE * board.width, board.top,
-           board.left + TILES_SIZE * board.width, TILES_SIZE * board.height + board.top)
-    Border(board.left, board.top + TILES_SIZE * board.height,
-           board.left + TILES_SIZE * board.width, board.top)
+
+def main():
+    shoot(MUSIC[0])
+
+    game = new_game()
+    game.start_screen()
 
     running = True
     while running:
         for event in pygame.event.get():
+            if not game.hero.alive:
+                game.game_over()
+                main()
+                terminate()
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 game.start_screen()
-            if not LIVE:
-                game.game_over()
-                running = False
             if pygame.key.get_pressed()[pygame.K_b]:
-                hero.help()
+                game.hero.help()
 
         screen.fill((0, 0, 0))
         game.update_hero()
@@ -698,13 +704,12 @@ def main():
         pygame.font.init()
         my_font = pygame.font.SysFont(None, 40)
         screen.blit(text, (950, 800))
-        text_surface = my_font.render(f'Name: {hero.get_name()}, HP: {hero.get_hp()}, Bread: {hero.get_bread()}',
+        text_surface = my_font.render(f'Name: {game.hero.get_name()}, HP: {game.hero.get_hp()}, Bread: {game.hero.get_bread()}',
                                       False, (0, 0, 0))
-        text_surface1 = my_font.render(f' Weapon: {hero.get_weapon()}', False, (0, 0, 0))
+        text_surface1 = my_font.render(f' Weapon: {game.hero.get_weapon()}', False, (0, 0, 0))
         screen.blit(text_surface, (1000, 850))
         screen.blit(text_surface1, (1000, 900))
         pygame.display.update()
-        pygame.display.flip()
         clock.tick(20)
 
 
