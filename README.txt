@@ -1,3 +1,6 @@
+презентация для защиты:
+https://docs.google.com/presentation/d/1yCtCAyHHoijHeB99fVPJ48HVULW8Y6b1V6pjes5Dv4U/edit?usp=drivesdk
+
 памятка для карт:
 0 - свободная клетка
 1 - стена

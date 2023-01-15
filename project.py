@@ -20,6 +20,7 @@ ENEMIES = {'Бальтазар': [100, 70, 'пикс\\pixil-frame-0 (15).png'],
            'Мельхиор': [150, 90, 'пикс\\pixil-frame-0 (18).png'],
            'Каспар': [200, 100, 'пикс\\pixil-frame-0 (17).png'],
            'Дракон': [400, 160, 'пикс\\pixil-frame-0 (16).png']}
+
 # создание групп спрайтов
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
