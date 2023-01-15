@@ -15,7 +15,7 @@ fight = False
 # get_monitors()
 
 TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair1.png',
-               '3': 'пикс\\pixil-frame-0 (19).png', '4': 'data\\floor.png'}
+               '3': 'пикс\\pixil-frame-0 (19).png', '4': 'data\\floor.png', '5': 'пикс\\pixil-frame-0 (16).png'}
 ENEMIES = {'Бальтазар': [100, 70, 'пикс\\pixil-frame-0 (15).png'],
            'Мельхиор': [150, 90, 'пикс\\pixil-frame-0 (18).png'],
            'Каспар': [200, 100, 'пикс\\pixil-frame-0 (17).png'],
@@ -423,6 +423,7 @@ class Board:
 
                     enemies.add(BaseEnemy(x, y, 'Дракон', *ENEMIES['Дракон']))
                     Tile('0', x, y)
+                    Tile('5', x, y)
 
 
 class Tile(pygame.sprite.Sprite):
@@ -591,6 +592,8 @@ class Fight:
             a = pygame.mixer.Sound('data/enemy_defeat.mp3')
             a.play()
             self.fight = False
+            if self.x == 1:
+                self.win()
             return
 
         self.hero.get_damage(self.enemy.damage, defence=self.hero.defence)
@@ -608,7 +611,7 @@ class Fight:
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 100)
         my_font1 = pygame.font.SysFont(None, 270)
-        text_surface = my_font1.render(f"YOU WIN!", False, (255, 0, 0))
+        text_surface = my_font1.render(f"YOU WON!", False, (255, 0, 0))
         screen.blit(text_surface, (400, 150))
         text_surface = my_font.render(f"Поздравляем! Вы выиграли!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 500))
@@ -668,8 +671,6 @@ class Fight:
             pygame.display.update()
             pygame.display.flip()
             clock.tick(20)
-        if self.x == 1:
-            self.win()
         shoot(MUSIC[0], -1)
 
 
