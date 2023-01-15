@@ -179,10 +179,6 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.defence = 0
         self.teleport_timer = 0
 
-    def hit(self, target):
-        self.weapon.hit(target)
-        return
-
     def help(self):
         if self.bread != 0:
             self.bread -= 1
@@ -197,7 +193,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
 
     def add_weapon(self, weapon):
         self.weapon = weapon
-        screen_text.add_text(f'Подобрал {weapon}'), (100, 500)
+        screen_text.add_text(f'Подобрал {weapon}', (100, 500))
         return
 
     def add_bread(self):
@@ -382,16 +378,16 @@ class Board:
                     walls_group.add(Tile('1', x, y))
 
                 elif level[y][x] == 'q':
-                    stairs.add(Stair(x, y, 'new_data\\map1.txt'))
+                    stairs.add(Stair(x, y, 'map1.txt'))
 
                 elif level[y][x] == 'w':
-                    stairs.add(Stair(x, y, 'new_data\\map2.txt'))
+                    stairs.add(Stair(x, y, 'map2.txt'))
 
                 elif level[y][x] == 'e':
-                    stairs.add(Stair(x, y, 'new_data\\map3.txt'))
+                    stairs.add(Stair(x, y, 'map3.txt'))
 
                 elif level[y][x] == 'r':
-                    stairs.add(Stair(x, y, 'new_data\\map4.txt', pos=(200, 500)))
+                    stairs.add(Stair(x, y, 'map4.txt', pos=(200, 500)))
 
                 elif level[y][x] == 'H':
                     Tile('0', x, y)
@@ -408,7 +404,6 @@ class Board:
                 elif level[y][x] == 'P':
                     Tile('0', x, y)
                     Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100), randint(0, 2)])
-
 
                 elif level[y][x] == 'M':
                     enemies.add(BaseEnemy(x, y, 'Мельхиор', *ENEMIES['Мельхиор']))
@@ -688,7 +683,7 @@ def new_game():
     screen.fill((0, 0, 0))
     hero = MainHero(150, 400, 800, name)
     hero_group.add(hero)
-    board = Board(33, 17, 'new_data\\map1.txt')
+    board = Board(33, 17, 'map1.txt')
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
     board.create_borders()
