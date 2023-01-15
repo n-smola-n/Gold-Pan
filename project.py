@@ -20,6 +20,7 @@ ENEMIES = {'Бальтазар': [100, 70, 'пикс\\pixil-frame-0 (15).png'],
            'Мельхиор': [150, 90, 'пикс\\pixil-frame-0 (18).png'],
            'Каспар': [200, 100, 'пикс\\pixil-frame-0 (17).png'],
            'Дракон': [400, 160, 'пикс\\pixil-frame-0 (16).png']}
+# создание групп спрайтов
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
@@ -34,7 +35,7 @@ name = 'Alex'
 MUSIC = ['data\\game.mp3', 'data\\game-over.mp3', 'data\\battle.mp3', 'data\\final.mp3', 'data\\bad_final.mp3']
 
 
-class MessageHandler:
+class MessageHandler:  # Спасибо Егору Алтынову за помощь с простым выводом текста по очереди на экран
     def __init__(self):
         self.font = pygame.font.SysFont(None, 40)
         self.queue = []
@@ -60,7 +61,7 @@ class MessageHandler:
             self.queue.pop(0)
 
 
-screen_text = MessageHandler()
+screen_text = MessageHandler()  # элемент класса
 
 
 def shoot(m, long=0):
@@ -68,7 +69,7 @@ def shoot(m, long=0):
     pygame.mixer.music.play(long)
 
 
-def sweep():
+def sweep():  # очистка групп спрайтов для работы/смены карт
     for i in all_sprites:
         i.kill()
     for i in enemies:
@@ -99,7 +100,7 @@ def load_image(fname, colorkey=None):
     return image
 
 
-class BaseCharacter:
+class BaseCharacter:  # родитель Героя и врагов
     def __init__(self, pos_x, pos_y, hp):
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
         self.alive = 1
@@ -131,7 +132,7 @@ class BaseCharacter:
         return self.weapon
 
 
-class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
+class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):  # класс врага спрайтом
     def __init__(self, pos_x, pos_y, ename, hp, damage, pict):
         pygame.sprite.Sprite.__init__(self)
         self.pos_x, self.pos_y, self.hp = pos_x, pos_y, hp
@@ -146,18 +147,11 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
     def get_info(self):
         return [f'Имя врага: {self.name}', f'Здоровье врага: {self.hp}', f'Сила удара: {self.damage}']
 
-    def is_alive(self):
-        if self.hp <= 0:
-            self.alive = 0
-            return False
-        else:
-            return True
-
     def get_pict(self):
         return self.pict
 
 
-class MainHero(BaseCharacter, pygame.sprite.Sprite):
+class MainHero(BaseCharacter, pygame.sprite.Sprite):  # класс героя
     image = load_image("data\\MH_stay.png")
 
     def __init__(self, pos_x, pos_y, hp, name):
@@ -179,21 +173,15 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.defence = 0
         self.teleport_timer = 0
 
-    def help(self):
+    def help(self):  # лечение
         if self.bread != 0:
             self.bread -= 1
             self.hp += 100
-
-    def is_alive(self):
-        if self.hp <= 0:
-            self.alive = 0
-            return False
-        else:
-            return True
+        screen_text.add_text(('Полечился, + 100 HP'), (100, 1000))
 
     def add_weapon(self, weapon):
         self.weapon = weapon
-        screen_text.add_text(f'Подобрал {weapon}', (100, 500))
+        screen_text.add_text(f'Подобрал {weapon}', (100, 1000))
         return
 
     def add_bread(self):
@@ -206,12 +194,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
     def get_armor(self):
         return self.armor.name if self.armor else '---'
 
-    def heal(self, amount):
-        self.hp += amount
-        self.hp = self.hp % 200 if self.hp != 200 else 200
-        screen_text.add_text('Полечился, теперь здоровья', self.hp, (100, 1000))
-
-    def check_chest(self, chest):
+    def check_chest(self, chest):  # проверка сундука и распределение содержимого
         if chest.stuff:
             for i in chest.stuff:
                 if i == 'Bread':
@@ -225,7 +208,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
                     screen_text.add_text(f'Вы экипировали доспех: {i.name}', (100, 1000))
             chest.stuff = []
 
-    def set_position(self, x, y, k):
+    def set_position(self, x, y, k):  # смена координат игрока
         self.rect.x = x
         self.rect.y = y
         collide = pygame.sprite.spritecollideany(self, enemies)
@@ -260,7 +243,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.rect.x = self.pos_x
         self.rect.y = self.pos_y
 
-    def image_change(self):
+    def image_change(self):  # смена картинок в зависимости от направления игрока
         if self.orientation == 1:
             im = load_image('data\\MH_go.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
@@ -296,7 +279,7 @@ class Armor:
         pass
 
 
-class Chest(pygame.sprite.Sprite):
+class Chest(pygame.sprite.Sprite):  # инициализация сундука и содержимого
     def __init__(self, pos_x, pos_y, stuff):
         super().__init__(all_sprites, chests)
         self.stuff = [stuff[0]] + ['Bread'] * stuff[1]
@@ -306,7 +289,7 @@ class Chest(pygame.sprite.Sprite):
             TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
-class Stair(pygame.sprite.Sprite):
+class Stair(pygame.sprite.Sprite):  # инициализация лестницы и места, куда она ведет
     def __init__(self, pos_x, pos_y, next_map, pos=None):
         super().__init__(tiles_group, all_sprites)
         self.next_map = next_map
@@ -352,6 +335,7 @@ class Board:
         self.top = top
         self.cell_size = cell_size
 
+    # загрузка уровня
     def load_level(self, filename):
         filename = filename
         self.selected_map = filename
@@ -369,6 +353,7 @@ class Board:
         Border(self.left, self.top + TILES_SIZE * self.height,
                self.left + TILES_SIZE * self.width, self.top)
 
+    # расшифровка карт и расположение объектов на карте
     def render(self, level):
         for y in range(len(level)):
             for x in range(len(level[y])):
@@ -435,7 +420,7 @@ class Tile(pygame.sprite.Sprite):
             TILES_SIZE * pos_x + TOP, TILES_SIZE * pos_y + LEFT)
 
 
-class Game:
+class Game:  # класс игры, основное действие тут
     def __init__(self, board, hero):
         self.exit_menu = False
         self.label_game = 'Новая игра'
@@ -473,6 +458,7 @@ class Game:
             level = self.board.load_level(action)
             self.board.render(level)
 
+    # проигрыш
     def game_over(self):
         shoot(MUSIC[1])
         hero_group.sprites()[0].kill()
@@ -504,6 +490,7 @@ class Game:
     def menu(self):
         self.exit_menu = True
 
+    # окно паузы & начальное меню
     def start_screen(self):
         self.exit_menu = False
         intro_text = ["Gold Pan", "", "",
@@ -566,8 +553,10 @@ class Game:
             clock.tick(FPS)
 
 
+# класс специально для битвы
 class Fight:
     def __init__(self, hero, enemy):
+        self.running = None
         self.hero, self.enemy = hero, enemy
         self.fight = True
         self.live = True
@@ -577,6 +566,7 @@ class Fight:
             self.x = 1
         self.main()
 
+    # удар игрока
     def clicked(self):
         self.enemy.get_damage(self.hero.weapon.damage)
         a = pygame.mixer.Sound('data/hit.mp3')
@@ -592,6 +582,7 @@ class Fight:
             a = pygame.mixer.Sound('data/enemy_defeat.mp3')
             a.play()
             self.fight = False
+            self.hero.kills += 1
             if self.x == 1:
                 self.win()
             return
@@ -605,6 +596,7 @@ class Fight:
             self.fight = False
             self.hero.alive = 0
 
+    # победа над драконом
     def win(self):
         shoot(MUSIC[1])
         fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
@@ -615,9 +607,11 @@ class Fight:
         screen.blit(text_surface, (400, 150))
         text_surface = my_font.render(f"Поздравляем! Вы выиграли!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 500))
-        text_surface = my_font.render(f"Вы браво сражались и заслужили победу!", False, (0, 0, 0))
+        text_surface = my_font.render(f"Вы браво сражались.", False, (0, 0, 0))
         screen.blit(text_surface, (570, 700))
-
+        my_font = pygame.font.SysFont(None, 100)
+        text_surface = my_font.render(f"Вы убили ровно {self.hero.kills} врагов!", False, (0, 0, 0))
+        screen.blit(text_surface, (570, 900))
         self.running = True
 
         while self.running:
@@ -632,6 +626,7 @@ class Fight:
             pygame.display.flip()
             clock.tick(FPS)
 
+    # сама битва
     def main(self):
         pygame.display.flip()
         screen.fill((0, 0, 0))
@@ -679,12 +674,13 @@ def terminate():
     sys.exit()
 
 
+# помощник при создании новой игры
 def new_game():
     sweep()
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 800, name)
+    hero = MainHero(150, 400, 100000, name)
     hero_group.add(hero)
-    board = Board(33, 17, 'map1.txt')
+    board = Board(33, 17, 'map4.txt')
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
     board.create_borders()
@@ -695,6 +691,7 @@ def new_game():
 def main():
     shoot(MUSIC[0])
 
+    # инициализация данной игры
     game = new_game()
     game.start_screen()
 
@@ -721,8 +718,9 @@ def main():
         text = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (26).png'), (780, 150))
         my_font = pygame.font.SysFont(None, 40)
         screen.blit(text, (950, 800))
-        text_surface = my_font.render(f'Name: {game.hero.get_name()}, HP: {game.hero.get_hp()}, Bread: {game.hero.get_bread()}',
-                                      False, (0, 0, 0))
+        text_surface = my_font.render(
+            f'Name: {game.hero.get_name()}, HP: {game.hero.get_hp()}, Bread: {game.hero.get_bread()}',
+            False, (0, 0, 0))
         text_surface1 = my_font.render(f' Weapon: {game.hero.get_weapon()}', False, (0, 0, 0))
         text_surface2 = my_font.render(f' Armor: {game.hero.get_armor()}', False, (0, 0, 0))
         screen.blit(text_surface, (1000, 850))
