@@ -15,12 +15,12 @@ TOP, LEFT = 100, 100
 fight = False
 # get_monitors()
 
-TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair.png',
-               '3': 'пикс\\pixil-frame-0 (19).png', '4': 'data\\floor.png'}
-ENEMIES = {'Бальтазар': [100, 50, 'пикс\\pixil-frame-0 (15).png'],
-           'Мельхиор': [150, 60, 'пикс\\pixil-frame-0 (18).png'],
-           'Каспар': [200, 70, 'пикс\\pixil-frame-0 (17).png'],
-           'Дракон': [400, 90, 'пикс\\pixil-frame-0 (16).png']}
+TILE_IMAGES = {'0': 'new_data\\floor.png', '1': 'new_data\\wall.png', '2': 'new_data\\stair.png',
+               '3': 'new_data\\chest.png', '4': 'new_data\\floor.png'}
+ENEMIES = {'Бальтазар': [100, 50, 'new_data\\Baltazar.png'],
+           'Мельхиор': [150, 60, 'new_data\\Melxior.png'],
+           'Каспар': [200, 70, 'new_data\\Kaspar.png'],
+           'Дракон': [400, 90, 'new_data\\Dragon.png']}
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
@@ -32,7 +32,7 @@ chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = 'Alex'
-MUSIC = ['data\\game.mp3', 'data\\game-over.mp3', 'data\\battle.mp3', 'data\\final.mp3', 'data\\bad_final.mp3']
+MUSIC = ['new_data\\game.mp3', 'new_data\\game-over.mp3', 'new_data\\battle.mp3', 'new_data\\final.mp3', 'new_data\\bad_final.mp3']
 
 
 def shoot(m):
@@ -242,17 +242,17 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
 
     def image_change(self):
         if self.orientation == 1:
-            im = load_image('data\\MH_go.png')
+            im = load_image('new_data\\MH_go.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 3:
-            im = load_image('data\\MH_go.png')
+            im = load_image('new_data\\MH_go.png')
             im = pygame.transform.flip(im, flip_x=True, flip_y=False)
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 0:
-            im = load_image(f'data\\MH_go{0}.png')
+            im = load_image(f'new_data\\MH_go{0}.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 2:
-            im = load_image(f'data\\MH_go{2}.png')
+            im = load_image(f'new_data\\MH_go{2}.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
 
 
@@ -477,7 +477,7 @@ class Game:
         shoot(MUSIC[1])
         hero_group.sprites()[0].kill()
         hero_group.clear(screen, screen)
-        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+        fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 110)
         my_font1 = pygame.font.SysFont(None, 270)
@@ -593,7 +593,7 @@ class Fight:
 
     def win(self):
         shoot(MUSIC[1])
-        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+        fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 100)
         my_font1 = pygame.font.SysFont(None, 270)
@@ -601,7 +601,7 @@ class Fight:
         screen.blit(text_surface, (400, 150))
         text_surface = my_font.render(f"Поздравляем! Вы выиграли!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 500))
-        text_surface = my_font.render(f"Вы браво сражались и заслужили победу!", False, (0, 0, 0))
+        text_surface = my_font.render(f"Вы браво сражались!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 700))
         my_font3 = pygame.font.SysFont(None, 80)
         text_surface = my_font3.render(f"Дождитесь загрузки кнопок для выхода.", False, (0, 0, 0))
@@ -635,9 +635,9 @@ class Fight:
 
             screen.fill((128, 128, 128))
 
-            fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
+            fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
             screen.blit(fon, (0, 0))
-            hero = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (8).png'), (700, 800))
+            hero = pygame.transform.scale(load_image('new_data\\main-hero.png'), (700, 800))
             screen.blit(hero, (100, 50))
             enemy = pygame.transform.scale(load_image(self.enemy.pict), (400, 500))
             screen.blit(enemy, (1200, 150))
@@ -700,7 +700,7 @@ def main():
         borders.draw(screen)
         hero_group.draw(screen)
         enemies.draw(screen)
-        text = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (26).png'), (780, 150))
+        text = pygame.transform.scale(load_image('new_data\\table.png'), (780, 150))
         pygame.font.init()
         my_font = pygame.font.SysFont(None, 40)
         screen.blit(text, (950, 800))
