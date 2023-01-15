@@ -1,10 +1,9 @@
 import pygame
 import sys
 import os
-from random import choice, randint
+from random import randint
 import pygame_widgets
 from pygame_widgets.button import Button
-from pygame_widgets.textbox import TextBox
 from screeninfo import get_monitors
 
 pygame.init()
@@ -15,12 +14,12 @@ TOP, LEFT = 100, 100
 fight = False
 # get_monitors()
 
-TILE_IMAGES = {'0': 'new_data\\floor.png', '1': 'new_data\\wall.png', '2': 'new_data\\stair.png',
-               '3': 'new_data\\chest.png', '4': 'new_data\\floor.png'}
-ENEMIES = {'Бальтазар': [100, 50, 'new_data\\Baltazar.png'],
-           'Мельхиор': [150, 60, 'new_data\\Melxior.png'],
-           'Каспар': [200, 70, 'new_data\\Kaspar.png'],
-           'Дракон': [400, 90, 'new_data\\Dragon.png']}
+TILE_IMAGES = {'0': 'data\\floor.png', '1': 'data\\wall.png', '2': 'data\\stair1.png',
+               '3': 'пикс\\pixil-frame-0 (19).png', '4': 'data\\floor.png'}
+ENEMIES = {'Бальтазар': [100, 70, 'пикс\\pixil-frame-0 (15).png'],
+           'Мельхиор': [150, 90, 'пикс\\pixil-frame-0 (18).png'],
+           'Каспар': [200, 100, 'пикс\\pixil-frame-0 (17).png'],
+           'Дракон': [400, 160, 'пикс\\pixil-frame-0 (16).png']}
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 walls_group = pygame.sprite.Group()
@@ -32,12 +31,41 @@ chests = pygame.sprite.Group()
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 clock = pygame.time.Clock()
 name = 'Alex'
-MUSIC = ['new_data\\game.mp3', 'new_data\\game-over.mp3', 'new_data\\battle.mp3', 'new_data\\final.mp3', 'new_data\\bad_final.mp3']
+MUSIC = ['data\\game.mp3', 'data\\game-over.mp3', 'data\\battle.mp3', 'data\\final.mp3', 'data\\bad_final.mp3']
 
 
-def shoot(m):
+class MessageHandler:
+    def __init__(self):
+        self.font = pygame.font.SysFont(None, 40)
+        self.queue = []
+        self.timer = 0
+        self.frame_rate = 20
+        self.message_time = 1.5
+
+    def add_text(self, text, cords):
+        color = (randint(100, 255), randint(100, 255), randint(100, 255))
+        self.queue.append([text, cords, color])
+        a = pygame.mixer.Sound('data/bonus.mp3')
+        a.play()
+
+    def blit_message(self):
+        if not self.queue:
+            return
+        render = self.font.render(self.queue[0][0], True, self.queue[0][2])
+        screen.blit(render, self.queue[0][1])
+
+        self.timer += 1
+        if self.timer >= self.frame_rate * self.message_time:
+            self.timer = 0
+            self.queue.pop(0)
+
+
+screen_text = MessageHandler()
+
+
+def shoot(m, long=0):
     pygame.mixer.music.load(m)
-    pygame.mixer.music.play()
+    pygame.mixer.music.play(long)
 
 
 def sweep():
@@ -85,7 +113,7 @@ class BaseCharacter:
 
     def get_damage(self, amount, defence=0):
         if self.is_alive():
-            self.hp -= (amount - defence)
+            self.hp -= ((amount - defence) // 2)
 
     def get_cords(self):
         return self.pos_x, self.pos_y
@@ -114,9 +142,6 @@ class BaseEnemy(BaseCharacter, pygame.sprite.Sprite):
         self.name = ename
         self.damage = damage
         self.pict = pict
-
-    def hit(self, target):
-        target.get_damage(self.damage)
 
     def get_info(self):
         return [f'Имя врага: {self.name}', f'Здоровье врага: {self.hp}', f'Сила удара: {self.damage}']
@@ -164,17 +189,15 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
             self.hp += 100
 
     def is_alive(self):
-        global LIVE
         if self.hp <= 0:
             self.alive = 0
-            LIVE = False
             return False
         else:
             return True
 
     def add_weapon(self, weapon):
         self.weapon = weapon
-        print(f'Подобрал {weapon}')
+        screen_text.add_text(f'Подобрал {weapon}'), (100, 500)
         return
 
     def add_bread(self):
@@ -184,23 +207,26 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
         self.armor = armor
         self.defence += armor.defence
 
+    def get_armor(self):
+        return self.armor.name if self.armor else '---'
+
     def heal(self, amount):
         self.hp += amount
         self.hp = self.hp % 200 if self.hp != 200 else 200
-        print('Полечился, теперь здоровья', self.hp)
+        screen_text.add_text('Полечился, теперь здоровья', self.hp, (100, 1000))
 
     def check_chest(self, chest):
         if chest.stuff:
             for i in chest.stuff:
                 if i == 'Bread':
                     self.add_bread()
-                    print('+1 хлеб')
+                    screen_text.add_text('+1 хлеб', (100, 1000))
                 elif type(i).__name__ == 'Weapon':
                     self.add_weapon(i)
-                    print(f'В инвентарь добавлено оружие: {i.name}')
+                    screen_text.add_text(f'В инвентарь добавлено оружие: {i.name}', (100, 1000))
                 elif type(i).__name__ == 'Armor':
                     self.add_armor(i)
-                    print(f'Вы экипировали доспех: {i.name}')
+                    screen_text.add_text(f'Вы экипировали доспех: {i.name}', (100, 1000))
             chest.stuff = []
 
     def set_position(self, x, y, k):
@@ -213,9 +239,7 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
 
         collide = pygame.sprite.spritecollideany(self, chests)
         if collide:
-            print(collide.stuff)
             self.check_chest(collide)
-            print(self.armor)
 
         collide = pygame.sprite.spritecollideany(self, stairs)
         if collide and not self.teleport_timer:
@@ -242,18 +266,18 @@ class MainHero(BaseCharacter, pygame.sprite.Sprite):
 
     def image_change(self):
         if self.orientation == 1:
-            im = load_image('new_data\\MH_go.png')
+            im = load_image('data\\MH_go.png')
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 3:
-            im = load_image('new_data\\MH_go.png')
+            im = load_image('data\\MH_go.png')
             im = pygame.transform.flip(im, flip_x=True, flip_y=False)
             return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
         elif self.orientation == 0:
-            im = load_image(f'new_data\\MH_go{0}.png')
-            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
+            im = load_image(f'data\\MH_go{0}.png')
+            return pygame.transform.scale(im, (TILES_SIZE - 15, TILES_SIZE))
         elif self.orientation == 2:
-            im = load_image(f'new_data\\MH_go{2}.png')
-            return pygame.transform.scale(im, (TILES_SIZE, TILES_SIZE))
+            im = load_image(f'data\\MH_go{2}.png')
+            return pygame.transform.scale(im, (TILES_SIZE - 15, TILES_SIZE))
 
 
 class Weapon:
@@ -262,9 +286,6 @@ class Weapon:
 
     def __str__(self):
         return self.name
-
-    def hit(self, target):
-        target.get_damage(self.damage)
 
     def render(self):
         pass
@@ -283,7 +304,6 @@ class Chest(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, stuff):
         super().__init__(all_sprites, chests)
         self.stuff = [stuff[0]] + ['Bread'] * stuff[1]
-        print(self.stuff)
         image = load_image(TILE_IMAGES['3'])
         self.image = pygame.transform.scale(image, (TILES_SIZE, TILES_SIZE))
         self.rect = self.image.get_rect().move(
@@ -374,13 +394,21 @@ class Board:
                     stairs.add(Stair(x, y, 'map4.txt', pos=(200, 500)))
 
                 elif level[y][x] == 'H':
+                    Tile('0', x, y)
                     Chest(x, y, [Armor('Шлем', 30), randint(0, 2)])
 
+                elif level[y][x] == 'V':
+                    Tile('0', x, y)
+                    Chest(x, y, [None, randint(0, 5)])
+
                 elif level[y][x] == 'S':
+                    Tile('0', x, y)
                     Chest(x, y, [Weapon('Меч', 60), randint(0, 2)])
 
                 elif level[y][x] == 'P':
+                    Tile('0', x, y)
                     Chest(x, y, [Weapon('Реликвия Злотая сковородка', 100), randint(0, 2)])
+
 
                 elif level[y][x] == 'M':
                     enemies.add(BaseEnemy(x, y, 'Мельхиор', *ENEMIES['Мельхиор']))
@@ -413,6 +441,8 @@ class Tile(pygame.sprite.Sprite):
 
 class Game:
     def __init__(self, board, hero):
+        self.exit_menu = False
+        self.label_game = 'Новая игра'
         self.running = None
         self.board = board
         self.hero = hero
@@ -439,7 +469,7 @@ class Game:
         action = self.hero.set_position(next_x, next_y, self.k)
 
         if type(action).__name__ == 'Fight':
-            print('игра уже началась')
+            pass
 
         elif type(action).__name__ == 'str':
             pygame.display.flip()
@@ -447,37 +477,11 @@ class Game:
             level = self.board.load_level(action)
             self.board.render(level)
 
-    def action_new_game(self):
-        self.running = False
-        screen.fill((0, 0, 0))
-        textbox = TextBox(screen, 100, 100, 800, 80, fontSize=50,
-                          borderColour=(255, 255, 255), textColour=(0, 0, 0),
-                          radius=10, borderThickness=5)
-        while True:
-            events = pygame.event.get()
-            for event in events:
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                    self.hero.name = textbox.getText()
-                    return
-            screen.fill((0, 0, 0))
-
-            textbox.listen(events)
-            textbox.draw()
-            pygame.display.update()
-
-    def action_load_button(self):
-        pass
-
-    def action_options(self):
-        pass
-
     def game_over(self):
         shoot(MUSIC[1])
         hero_group.sprites()[0].kill()
         hero_group.clear(screen, screen)
-        fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
+        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 110)
         my_font1 = pygame.font.SysFont(None, 270)
@@ -501,30 +505,26 @@ class Game:
             pygame.display.flip()
             clock.tick(FPS)
 
+    def menu(self):
+        self.exit_menu = True
+
     def start_screen(self):
+        self.exit_menu = False
         intro_text = ["Gold Pan", "", "",
                       "Правила игры",
                       "В режиме боя нажмите клавишу 'F' для атаки.",
                       "Для поднятия hp ешь хлеб! -> Нажми клавишу 'B'."]
 
         fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
-        new_game_button = Button(screen, 150, 400, 350, 100,
-                                 text='Новая игра',  # Text to display
-                                 fontSize=50,  # Size of font
-                                 margin=0,
-                                 inactiveColour=(0, 100, 255),
-                                 hoverColour=(255, 100, 30),
-                                 radius=50,  # Radius of border corners (leave empty for not curved)
-                                 onClick=lambda: self.action_new_game())
 
         load_button = Button(screen, 150, 550, 350, 100,
-                             text='Загрузить игру',  # Text to display
+                             text=self.label_game,  # Text to display
                              fontSize=50,  # Size of font
                              margin=0,
                              inactiveColour=(0, 100, 255),
                              hoverColour=(255, 100, 30),
                              radius=50,  # Radius of border corners (leave empty for not curved)
-                             onClick=lambda: terminate
+                             onClick=lambda: self.menu()
                              )
 
         exit_button = Button(screen, 150, 700, 350, 100,
@@ -537,7 +537,7 @@ class Game:
                              onClick=terminate
                              )
 
-        button_group = [new_game_button, load_button, exit_button]
+        button_group = [load_button, exit_button]
 
         screen.blit(fon, (0, 0))
         font = pygame.font.Font(None, 50)
@@ -559,12 +559,12 @@ class Game:
                     i.draw()
                     i.listen(events)
                 pygame_widgets.update(events)
+                if self.exit_menu:
+                    self.label_game = 'Продолжить'
+                    return
 
                 if event.type == pygame.QUIT:
                     terminate()
-                elif event.type == pygame.KEYDOWN or \
-                        event.type == pygame.MOUSEBUTTONDOWN:
-                    return
 
             pygame.display.flip()
             clock.tick(FPS)
@@ -582,18 +582,34 @@ class Fight:
         self.main()
 
     def clicked(self):
-        self.hero.get_damage(self.enemy.damage)
-        print(self.hero.hp)
         self.enemy.get_damage(self.hero.weapon.damage)
+        a = pygame.mixer.Sound('data/hit.mp3')
+        a.play()
+        my_font = pygame.font.SysFont(None, 100)
+        text_surface = my_font.render(f"-{self.hero.weapon.damage}", False, (205, 0, 0))
+        screen.blit(text_surface, (1100, 150))
+        pygame.display.update()
+
+        pygame.time.delay(500)
+
         if not self.enemy.is_alive():
+            a = pygame.mixer.Sound('data/enemy_defeat.mp3')
+            a.play()
             self.fight = False
+            return
+
+        self.hero.get_damage(self.enemy.damage, defence=self.hero.defence)
+        text_surface = my_font.render(f"-{self.enemy.damage}", False, (205, 0, 0))
+        screen.blit(text_surface, (500, 150))
+        pygame.time.delay(500)
+
         if not self.hero.is_alive():
             self.fight = False
             self.hero.alive = 0
 
     def win(self):
         shoot(MUSIC[1])
-        fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
+        fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
         screen.blit(fon, (0, 0))
         my_font = pygame.font.SysFont(None, 100)
         my_font1 = pygame.font.SysFont(None, 270)
@@ -601,18 +617,16 @@ class Fight:
         screen.blit(text_surface, (400, 150))
         text_surface = my_font.render(f"Поздравляем! Вы выиграли!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 500))
-        text_surface = my_font.render(f"Вы браво сражались!", False, (0, 0, 0))
+        text_surface = my_font.render(f"Вы браво сражались и заслужили победу!", False, (0, 0, 0))
         screen.blit(text_surface, (570, 700))
-        my_font3 = pygame.font.SysFont(None, 80)
-        text_surface = my_font3.render(f"Дождитесь загрузки кнопок для выхода.", False, (0, 0, 0))
-        screen.blit(text_surface, (400, 900))
+
         self.running = True
+
         while self.running:
             events = pygame.event.get()
             for event in events:
                 pygame_widgets.update(events)
-
-                if event.type == pygame.QUIT:
+                if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                     terminate()
                 elif event.type == pygame.KEYDOWN or \
                         event.type == pygame.MOUSEBUTTONDOWN:
@@ -622,22 +636,31 @@ class Fight:
 
     def main(self):
         pygame.display.flip()
+        screen.fill((0, 0, 0))
+        my_font = pygame.font.SysFont(None, 100)
+        shoot('data\\meet.mp3')
+        text_surface = my_font.render('Вы наткнулись на врага!', False, (100, 0, 0))
+
+        screen.blit(text_surface, (screen.get_width() // 2 - 400, screen.get_height() // 2 - 100))
+
+        pygame.display.update()
+        pygame.time.delay(1700)
+
         screen.fill((128, 128, 128))
-        shoot(self.mix)
+        shoot(self.mix, -1)
         while self.fight:
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
-                    pygame.quit()
-                    quit()
+                    terminate()
                 if pygame.key.get_pressed()[pygame.K_f]:
                     self.clicked()
 
             screen.fill((128, 128, 128))
 
-            fon = pygame.transform.scale(load_image('new_data\\battle-fon.png'), screen.get_size())
+            fon = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (24).png'), screen.get_size())
             screen.blit(fon, (0, 0))
-            hero = pygame.transform.scale(load_image('new_data\\main-hero.png'), (700, 800))
+            hero = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (8).png'), (700, 800))
             screen.blit(hero, (100, 50))
             enemy = pygame.transform.scale(load_image(self.enemy.pict), (400, 500))
             screen.blit(enemy, (1200, 150))
@@ -652,7 +675,7 @@ class Fight:
             clock.tick(20)
         if self.x == 1:
             self.win()
-        shoot(MUSIC[0])
+        shoot(MUSIC[0], -1)
 
 
 def terminate():
@@ -696,19 +719,21 @@ def main():
         screen.fill((0, 0, 0))
         game.update_hero()
 
-        all_sprites.draw(screen)
         borders.draw(screen)
+        all_sprites.draw(screen)
         hero_group.draw(screen)
-        enemies.draw(screen)
-        text = pygame.transform.scale(load_image('new_data\\table.png'), (780, 150))
-        pygame.font.init()
+        text = pygame.transform.scale(load_image('пикс\\pixil-frame-0 (26).png'), (780, 150))
         my_font = pygame.font.SysFont(None, 40)
         screen.blit(text, (950, 800))
         text_surface = my_font.render(f'Name: {game.hero.get_name()}, HP: {game.hero.get_hp()}, Bread: {game.hero.get_bread()}',
                                       False, (0, 0, 0))
         text_surface1 = my_font.render(f' Weapon: {game.hero.get_weapon()}', False, (0, 0, 0))
+        text_surface2 = my_font.render(f' Armor: {game.hero.get_armor()}', False, (0, 0, 0))
         screen.blit(text_surface, (1000, 850))
         screen.blit(text_surface1, (1000, 900))
+        screen.blit(text_surface2, (1300, 900))
+        screen_text.blit_message()
+
         pygame.display.update()
         clock.tick(20)
 
