@@ -495,9 +495,10 @@ class Game:  # класс игры, основное действие тут
     def start_screen(self):
         self.exit_menu = False
         intro_text = ["Gold Pan", "", "",
-                      "Правила игры",
-                      "В режиме боя нажмите клавишу 'F' для атаки.",
-                      "Для поднятия hp ешь хлеб! -> Нажми клавишу 'B'."]
+                      "Вы - путешественник, забредший сюда в поисках реликвии - Златой сковородки.",
+                      "Вход завалило, так что путь только один - вперед.",
+                      "В режиме боя нажмите клавишу 'F' для атаки",
+                      "Для поднятия hp - ешь хлеб! -> Нажми клавишу 'B'"]
 
         fon = pygame.transform.scale(load_image('data\\fon.jpg'), screen.get_size())
 
@@ -679,9 +680,9 @@ def terminate():
 def new_game():
     sweep()
     screen.fill((0, 0, 0))
-    hero = MainHero(150, 400, 100000, name)
+    hero = MainHero(150, 400, 800, name)
     hero_group.add(hero)
-    board = Board(33, 17, 'map4.txt')
+    board = Board(33, 17, 'map1.txt')
     board.set_view(TOP, LEFT, TILES_SIZE)
     board.render(board.board)
     board.create_borders()
